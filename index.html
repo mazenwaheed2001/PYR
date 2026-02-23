@@ -758,7 +758,12 @@ function onThemeCatInline(i,sel){
   const cell=document.getElementById('item-cell-'+i);
   if(cell){
     const isel=cell.querySelector('select');
-    if(isel){isel.innerHTML=buildItemOpts(sel.value,'');isel.value='';}
+    if(isel){
+      isel.innerHTML=buildItemOpts(sel.value,'');
+      isel.value='';
+      // auto-focus item select after category chosen
+      setTimeout(()=>isel.focus(),50);
+    }
   }
 }
 function onThemeItemInline(i,sel){
@@ -1230,18 +1235,31 @@ async function changeQty(type,i,delta){
 
 // EDIT ROWS - now handled by toggleRowEdit
 
-// ENTER KEY - save current theme row
+// ENTER KEY - smart navigation/save in theme table
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter')return;
   const el=e.target;
   if(!el.matches('select,input'))return;
   const tbody=el.closest('tbody');
-  if(!tbody)return;
+  if(!tbody||tbody.id!=='theme-body')return;
   e.preventDefault();
   const curRow=el.closest('tr');
   if(!curRow)return;
   const idx=parseInt(curRow.dataset.idx);
-  if(tbody.id==='theme-body'&&!isNaN(idx)){
+  // if this is the category select (csel), move focus to item select
+  if(el.classList.contains('csel')){
+    const itemSel=curRow.querySelector('.isel');
+    if(itemSel){itemSel.focus();}
+    return;
+  }
+  // if this is the item select (isel), move focus to notes textarea
+  if(el.classList.contains('isel')){
+    const note=curRow.querySelector('textarea');
+    if(note){note.focus();}
+    return;
+  }
+  // otherwise save
+  if(!isNaN(idx)){
     saveThemeRow(idx);
   }
 });

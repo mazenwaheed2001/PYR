@@ -918,27 +918,28 @@ function renderReturns(){
   const tb=document.getElementById('returns-body');
   tb.innerHTML='';
   returnRows.forEach((row,i)=>{
-    const invItems=inventory.filter(x=>x.cat===row.cat);
     const catOpts=['components','machines','kits','materials'].map(c=>`<option value="${c}" ${c===row.cat?'selected':''}>${catLabel(c)}</option>`).join('');
-    let itemOpts=`<option value="">-- اختر --</option>`+
-      invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('');
+    const itemOpts=buildItemOpts(row.cat,row.item);
     const qty=parseInt(row.qty)||0;
+    const isNew=!!row._new;
     const tr=document.createElement('tr');
-    tr.dataset.mode='view';
+    tr.dataset.mode=isNew?'edit':'view';
+    tr.dataset.idx=i;
+    tr.dataset.table='ret';
     tr.innerHTML=`
       <td class="tdc">
         <span class="rv"><span class="csel c${catAbbr(row.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(row.cat)}</span></span>
-        <span class="re" style="display:none"><select class="csel c${catAbbr(row.cat)}" onchange="onRetCat(${i},this)">${catOpts}</select></span>
+        <span class="re"${isNew?'':' style="display:none"'}><select class="csel c${catAbbr(row.cat)}" onchange="onRetCatInline(${i},this)">${catOpts}</select></span>
       </td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${row.item||'<span style="color:var(--g400)">—</span>'}</span>
-        <span class="re" style="display:none">
-          <select class="isel" onchange="onRetItem(${i},this)">${itemOpts}</select>
+        <span class="re" id="ret-item-cell-${i}"${isNew?'':' style="display:none"'}>
+          <select class="isel" onchange="returnRows[${i}].item=this.value">${itemOpts}</select>
         </span>
       </td>
       <td class="tdq">
         <span class="rv" style="font-weight:700;color:var(--or);font-size:15px">${qty}</span>
-        <span class="re" style="display:none">
+        <span class="re"${isNew?'':' style="display:none"'}>
           <div class="qctr">
             <button onclick="changeQty('ret',${i},-1)">−</button>
             <span id="qty-ret-${i}">${qty}</span>
@@ -948,13 +949,14 @@ function renderReturns(){
       </td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${row.reason||'<span style="color:var(--g400)">—</span>'}</span>
-        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateRet(${i},'reason',this.value)">${row.reason||''}</textarea></span>
+        <span class="re"${isNew?'':' style="display:none"'}><textarea class="cedit" rows="1" oninput="ar(this)" onchange="returnRows[${i}].reason=this.value">${row.reason||''}</textarea></span>
       </td>
       <td class="tda">
         <div class="act-wrap">
-          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
+          <button class="act-btn" id="ret-mbtn-${i}" onclick="toggleMenu(this)" style="${isNew?'display:none':''}">⋮</button>
+          <button class="bsave-row" id="ret-sbtn-${i}" style="${isNew?'display:flex':'display:none'}" onclick="saveRetRow(${i})">💾 حفظ</button>
           <div class="act-menu">
-            <button onclick="toggleRowEdit(this,'ret',${i});closeAllMenus()">✏️ تعديل</button>
+            <button onclick="startRetEdit(${i});closeAllMenus()">✏️ تعديل</button>
             <button class="danger" onclick="delRetRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
           </div>
         </div>
@@ -963,19 +965,50 @@ function renderReturns(){
   });
   tb.querySelectorAll('textarea').forEach(ar);
 }
-function onRetCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;updateRet(i,'cat',sel.value);setTimeout(()=>renderReturns(),50);}
-function onRetItem(i,sel){
-  updateRet(i,'item',sel.value);
+function startRetEdit(i){
+  const tb=document.getElementById('returns-body');
+  const tr=tb.querySelectorAll('tr')[i];
+  if(!tr)return;
+  tr.dataset.mode='edit';
+  tr.querySelectorAll('.rv').forEach(el=>el.style.display='none');
+  tr.querySelectorAll('.re').forEach(el=>el.style.display='');
+  const mbtn=document.getElementById('ret-mbtn-'+i);
+  const sbtn=document.getElementById('ret-sbtn-'+i);
+  if(mbtn)mbtn.style.display='none';
+  if(sbtn)sbtn.style.display='flex';
+  const first=tr.querySelector('.re select,.re input,.re textarea');
+  if(first)first.focus();
+}
+function onRetCatInline(i,sel){
+  sel.className=`csel c${catAbbr(sel.value)}`;
+  returnRows[i].cat=sel.value;
+  returnRows[i].item='';
+  const cell=document.getElementById('ret-item-cell-'+i);
+  if(cell){
+    const isel=cell.querySelector('select');
+    if(isel){isel.innerHTML=buildItemOpts(sel.value,'');isel.value='';setTimeout(()=>isel.focus(),50);}
+  }
+}
+async function saveRetRow(i){
+  const r=returnRows[i];
+  if(!r)return;
+  if(!r.item){showToast('⚠️ اختر الصنف أولاً');return;}
+  ld();
+  if(r._new){
+    delete r._new;
+    await db.from('school_returns').insert({id:r.id,school_id:curReturnSchoolId,cat:r.cat,item:r.item,qty:r.qty||0,reason:r.reason||''});
+  } else {
+    await db.from('school_returns').update({cat:r.cat,item:r.item,qty:r.qty||0,reason:r.reason||''}).eq('id',r.id);
+  }
+  await loadReturns();uh();showToast('✅ تم الحفظ');
 }
 async function updateRet(i,field,val){
   const r=returnRows[i];if(!r)return;r[field]=val;
-  await db.from('school_returns').update({[field]:val}).eq('id',r.id);
 }
 async function addReturnRow(){
-  ld();
   const id='sr'+Date.now();
-  await db.from('school_returns').insert({id,school_id:curReturnSchoolId,cat:'components',item:'',qty:0,reason:''});
-  await loadReturns();uh();
+  returnRows.push({id,school_id:curReturnSchoolId,cat:'components',item:'',qty:0,reason:'',_new:true});
+  renderReturns();
 }
 async function delRetRow(id,i){
   if(!confirm('تحذف الصف؟'))return;
@@ -1003,27 +1036,30 @@ async function renderInventory(){
   tb.innerHTML='';
   rows.forEach(({r,p},i)=>{
     const catOpts=['components','machines','kits','materials'].map(c=>`<option value="${c}" ${c===r.cat?'selected':''}>${catLabel(c)}</option>`).join('');
+    const isNew=!!r._new;
     const tr=document.createElement('tr');
-    tr.dataset.mode='view';
+    tr.dataset.mode=isNew?'edit':'view';
+    tr.dataset.idx=i;
     tr.innerHTML=`
       <td class="tdc">
         <span class="rv"><span class="csel c${catAbbr(r.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(r.cat)}</span></span>
-        <span class="re" style="display:none"><select class="csel c${catAbbr(r.cat)}" onchange="updateInv('${r.id}','cat',this.value);this.className='csel c'+catAbbr(this.value);updateInvStats()">${catOpts}</select></span>
+        <span class="re"${isNew?'':' style="display:none"'}><select class="csel c${catAbbr(r.cat)}" onchange="this.className='csel c'+catAbbr(this.value);inventory[${i}].cat=this.value;updateInvStats()">${catOpts}</select></span>
       </td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${r.name}</span>
-        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','name',this.value)">${r.name}</textarea></span>
+        <span class="re"${isNew?'':' style="display:none"'}><textarea class="cedit" rows="1" oninput="ar(this)" onchange="inventory[${i}].name=this.value">${r.name}</textarea></span>
       </td>
       <td class="tdq" style="color:var(--or);font-weight:700;font-size:16px">${p}</td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${r.note||'<span style="color:var(--g400)">—</span>'}</span>
-        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','note',this.value)">${r.note||''}</textarea></span>
+        <span class="re"${isNew?'':' style="display:none"'}><textarea class="cedit" rows="1" oninput="ar(this)" onchange="inventory[${i}].note=this.value">${r.note||''}</textarea></span>
       </td>
       <td class="tda">
         <div class="act-wrap">
-          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
+          <button class="act-btn" id="inv-mbtn-${i}" onclick="toggleMenu(this)" style="${isNew?'display:none':''}">⋮</button>
+          <button class="bsave-row" id="inv-sbtn-${i}" style="${isNew?'display:flex':'display:none'}" onclick="saveInvRow(${i})">💾 حفظ</button>
           <div class="act-menu">
-            <button onclick="toggleRowEdit(this,'inv',${i});closeAllMenus()">✏️ تعديل</button>
+            <button onclick="startInvEdit(${i});closeAllMenus()">✏️ تعديل</button>
             <button class="danger" onclick="delInvRow('${r.id}',${i});closeAllMenus()">🗑️ حذف</button>
           </div>
         </div>
@@ -1032,6 +1068,32 @@ async function renderInventory(){
   });
   tb.querySelectorAll('textarea').forEach(ar);
 }
+function startInvEdit(i){
+  const tb=document.getElementById('inv-body');
+  const tr=tb.querySelectorAll('tr')[i];
+  if(!tr)return;
+  tr.dataset.mode='edit';
+  tr.querySelectorAll('.rv').forEach(el=>el.style.display='none');
+  tr.querySelectorAll('.re').forEach(el=>el.style.display='');
+  const mbtn=document.getElementById('inv-mbtn-'+i);
+  const sbtn=document.getElementById('inv-sbtn-'+i);
+  if(mbtn)mbtn.style.display='none';
+  if(sbtn)sbtn.style.display='flex';
+  const first=tr.querySelector('.re select,.re input,.re textarea');
+  if(first)first.focus();
+}
+async function saveInvRow(i){
+  const r=inventory[i];if(!r)return;
+  if(!r.name||!r.name.trim()){showToast('⚠️ أدخل اسم الصنف');return;}
+  ld();
+  if(r._new){
+    delete r._new;
+    await db.from('inventory').insert({id:r.id,cat:r.cat,name:r.name,note:r.note||''});
+  } else {
+    await db.from('inventory').update({cat:r.cat,name:r.name,note:r.note||''}).eq('id',r.id);
+  }
+  await loadInventory();uh();showToast('✅ تم الحفظ');
+}
 function updateInvStats(){
   ['components','machines','kits','materials'].forEach(c=>{
     document.getElementById('st-'+c).textContent=inventory.filter(r=>r.cat===c).length;
@@ -1039,13 +1101,11 @@ function updateInvStats(){
 }
 async function updateInv(id,field,val){
   const r=inventory.find(x=>x.id===id);if(r)r[field]=val;
-  await db.from('inventory').update({[field]:val}).eq('id',id);
 }
 async function addInvRow(){
-  ld();
   const id='i'+Date.now();
-  await db.from('inventory').insert({id,cat:'components',name:'صنف جديد',note:''});
-  await loadInventory();uh();
+  inventory.push({id,cat:'components',name:'',note:'',_new:true});
+  await renderInventory();
 }
 async function delInvRow(id,i){
   if(!confirm('تحذف الصنف؟'))return;ld();
@@ -1139,7 +1199,24 @@ function renderTD(type){
   });
   tb.querySelectorAll('textarea').forEach(ar);
 }
-function onTDRecvCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;updateTD('recv',tdRecv[i].id,'cat',sel.value);setTimeout(()=>renderTD('recv'),50);}
+function onTDRecvCat(i,sel){
+  sel.className=`csel c${catAbbr(sel.value)}`;
+  tdRecv[i].cat=sel.value;
+  tdRecv[i].item='';
+  updateTD('recv',tdRecv[i].id,'cat',sel.value);
+  // update item dropdown inline without re-rendering
+  const row=sel.closest('tr');
+  if(row){
+    const isel=row.querySelector('.isel');
+    if(isel){
+      const invItems=inventory.filter(x=>x.cat===sel.value);
+      isel.innerHTML=`<option value="">-- اختر --</option>`+invItems.map(x=>`<option value="${x.name}">${x.name}</option>`).join('')+`<option value="__c__">✏️ يدوي</option>`;
+      isel.value='';
+      const inp=isel.nextElementSibling;if(inp)inp.style.display='none';
+      setTimeout(()=>isel.focus(),50);
+    }
+  }
+}
 function onTDRecvItem(i,sel){
   const inp=sel.nextElementSibling;
   if(sel.value==='__c__'){inp.style.display='block';inp.focus();}

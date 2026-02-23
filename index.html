@@ -247,6 +247,13 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   .htitle{font-size:18px;}
   .page{padding:10px;}
 }
+
+/* DELIVERY DATE */
+.delivery-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px dashed var(--orbd);color:var(--g400);background:#fff;transition:all .15s;}
+.delivery-badge:hover{border-color:var(--or);color:var(--or);background:var(--orb);}
+.delivery-badge.set{border-style:solid;border-color:var(--or);color:var(--ord);background:var(--orb);}
+.del-sel{padding:4px 8px;border:1.5px solid var(--orbd);border-radius:7px;font-family:inherit;font-size:12px;font-weight:600;color:var(--g800);background:#fff;outline:none;cursor:pointer;}
+.del-sel:focus{border-color:var(--or);}
 </style>
 </head>
 <body>
@@ -352,7 +359,25 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   <div class="page" id="page-school-detail">
     <div class="ph">
       <div class="ptitle" id="sd-title">المدرسة</div>
-      <button class="badd" onclick="addThemeRow()">＋ إضافة صف</button>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="delivery-badge" id="delivery-badge" onclick="toggleDeliveryEdit()" title="اضغط لتعيين تاريخ التسليم">📅 تاريخ التسليم</div>
+        <button class="badd" onclick="addThemeRow()">＋ إضافة صف</button>
+      </div>
+    </div>
+    <!-- Delivery date editor -->
+    <div id="delivery-editor" style="display:none;align-items:center;gap:8px;margin-bottom:16px;background:#FFF7ED;border:1px solid var(--orbd);border-radius:10px;padding:10px 14px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--ord)">📅 تاريخ تسليم الحاجات:</span>
+      <select id="del-year" class="del-sel" onchange="saveDeliveryDate()"></select>
+      <select id="del-month" class="del-sel" onchange="saveDeliveryDate()">
+        <option value="">الشهر</option>
+        <option value="1">يناير</option><option value="2">فبراير</option><option value="3">مارس</option>
+        <option value="4">أبريل</option><option value="5">مايو</option><option value="6">يونيو</option>
+        <option value="7">يوليو</option><option value="8">أغسطس</option><option value="9">سبتمبر</option>
+        <option value="10">أكتوبر</option><option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+      </select>
+      <select id="del-day" class="del-sel" onchange="saveDeliveryDate()"></select>
+      <button onclick="clearDeliveryDate()" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca">✕ مسح</button>
+      <button onclick="toggleDeliveryEdit()" style="background:none;border:none;color:var(--g400);cursor:pointer;font-size:12px;padding:2px 8px;border-radius:5px;border:1px solid var(--g200)">إغلاق</button>
     </div>
     <div class="ttabs" id="sd-tabs"></div>
     <div class="tcard">
@@ -713,7 +738,82 @@ async function loadSchoolDetail(){
   document.getElementById('sd-title').textContent=(s.icon||'🏫')+' '+s.name;
   curTheme=0;
   buildSchoolTabs(curSchoolId);
+  initDeliveryDate(s);
   await loadTheme();uh();
+}
+
+// ===== DELIVERY DATE =====
+function initDeliveryDate(school){
+  // Populate year dropdown
+  const ySel=document.getElementById('del-year');
+  ySel.innerHTML='<option value="">السنة</option>';
+  const curY=new Date().getFullYear();
+  for(let y=2020;y<=curY+2;y++){
+    const o=document.createElement('option');
+    o.value=y;o.textContent=y;
+    if(school.delivery_year==y)o.selected=true;
+    ySel.appendChild(o);
+  }
+  // Populate day dropdown
+  const dSel=document.getElementById('del-day');
+  dSel.innerHTML='<option value="">اليوم</option>';
+  for(let d=1;d<=31;d++){
+    const o=document.createElement('option');
+    o.value=d;o.textContent=d;
+    if(school.delivery_day==d)o.selected=true;
+    dSel.appendChild(o);
+  }
+  // Set month
+  const mSel=document.getElementById('del-month');
+  if(school.delivery_month) mSel.value=school.delivery_month;
+  else mSel.value='';
+  // Update badge
+  updateDeliveryBadge(school);
+  // Hide editor
+  document.getElementById('delivery-editor').style.display='none';
+}
+function updateDeliveryBadge(school){
+  const badge=document.getElementById('delivery-badge');
+  const months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  if(school.delivery_year||school.delivery_month||school.delivery_day){
+    const m=school.delivery_month?months[school.delivery_month-1]:'';
+    const d=school.delivery_day?school.delivery_day+' ':' ';
+    const y=school.delivery_year||'';
+    badge.textContent='📅 '+[d+m,y].filter(Boolean).join(' ');
+    badge.className='delivery-badge set';
+    badge.title='تاريخ التسليم — اضغط للتعديل';
+  } else {
+    badge.textContent='📅 تاريخ التسليم';
+    badge.className='delivery-badge';
+    badge.title='اضغط لتعيين تاريخ التسليم';
+  }
+}
+function toggleDeliveryEdit(){
+  const ed=document.getElementById('delivery-editor');
+  const isOpen=ed.style.display!=='none';
+  ed.style.display=isOpen?'none':'flex';
+}
+async function saveDeliveryDate(){
+  const y=document.getElementById('del-year').value;
+  const m=document.getElementById('del-month').value;
+  const d=document.getElementById('del-day').value;
+  const s=schools.find(x=>x.id===curSchoolId);
+  if(!s)return;
+  s.delivery_year=y||null;
+  s.delivery_month=m||null;
+  s.delivery_day=d||null;
+  await db.from('schools').update({delivery_year:y||null,delivery_month:m||null,delivery_day:d||null}).eq('id',curSchoolId);
+  updateDeliveryBadge(s);
+}
+async function clearDeliveryDate(){
+  const s=schools.find(x=>x.id===curSchoolId);
+  if(!s)return;
+  s.delivery_year=null;s.delivery_month=null;s.delivery_day=null;
+  await db.from('schools').update({delivery_year:null,delivery_month:null,delivery_day:null}).eq('id',curSchoolId);
+  document.getElementById('del-year').value='';
+  document.getElementById('del-month').value='';
+  document.getElementById('del-day').value='';
+  updateDeliveryBadge(s);
 }
 
 // ===== THEME TABLE =====
@@ -782,10 +882,12 @@ function renderThemeTable(){
         <span class="re"${isNew?'':' style="display:none"'}><textarea class="cedit" rows="1" oninput="ar(this)" onchange="themeRows[${i}].note=this.value">${row.note||''}</textarea></span>
       </td>
       <td class="tda">
-        <div style="display:flex;gap:6px;align-items:center;justify-content:center">
-          <button class="bedit-row" id="ebtn-${i}" style="${isNew?'display:none':''}" onclick="startThemeEdit(${i})">✏️ تعديل</button>
-          <button class="bsave-row" id="sbtn-${i}" style="${isNew?'display:flex':''}" onclick="saveThemeRow(${i})">💾 حفظ</button>
-          <button class="bdel" onclick="delThemeRow('${row.id}',${i})">🗑️</button>
+        <div class="act-wrap">
+          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
+          <div class="act-menu">
+            <button onclick="startThemeEdit(${i});closeAllMenus()">✏️ تعديل</button>
+            <button class="danger" onclick="delThemeRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
+          </div>
         </div>
       </td>`;
     tb.appendChild(tr);
@@ -806,10 +908,6 @@ function startThemeEdit(i){
   tr.dataset.mode='edit';
   tr.querySelectorAll('.rv').forEach(el=>el.style.display='none');
   tr.querySelectorAll('.re').forEach(el=>el.style.display='');
-  const ebtn=document.getElementById('ebtn-'+i);
-  const sbtn=document.getElementById('sbtn-'+i);
-  if(ebtn)ebtn.style.display='none';
-  if(sbtn)sbtn.style.display='flex';
   const first=tr.querySelector('.re select,.re input,.re textarea');
   if(first)first.focus();
 }
@@ -1016,8 +1114,7 @@ function renderReturns(){
       </td>
       <td class="tda">
         <div class="act-wrap">
-          <button class="act-btn" id="ret-mbtn-${i}" onclick="toggleMenu(this)" style="${isNew?'display:none':''}">⋮</button>
-          <button class="bsave-row" id="ret-sbtn-${i}" style="${isNew?'display:flex':'display:none'}" onclick="saveRetRow(${i})">💾 حفظ</button>
+          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
           <div class="act-menu">
             <button onclick="startRetEdit(${i});closeAllMenus()">✏️ تعديل</button>
             <button class="danger" onclick="delRetRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
@@ -1027,6 +1124,13 @@ function renderReturns(){
     tb.appendChild(tr);
   });
   tb.querySelectorAll('textarea').forEach(ar);
+  // Focus first field in new rows
+  returnRows.forEach((row,i)=>{
+    if(row._new){
+      const tr=tb.querySelectorAll('tr')[i];
+      if(tr){const f=tr.querySelector('.re select');if(f)f.focus();}
+    }
+  });
 }
 function startRetEdit(i){
   const tb=document.getElementById('returns-body');
@@ -1035,10 +1139,6 @@ function startRetEdit(i){
   tr.dataset.mode='edit';
   tr.querySelectorAll('.rv').forEach(el=>el.style.display='none');
   tr.querySelectorAll('.re').forEach(el=>el.style.display='');
-  const mbtn=document.getElementById('ret-mbtn-'+i);
-  const sbtn=document.getElementById('ret-sbtn-'+i);
-  if(mbtn)mbtn.style.display='none';
-  if(sbtn)sbtn.style.display='flex';
   const first=tr.querySelector('.re select,.re input,.re textarea');
   if(first)first.focus();
 }
@@ -1375,32 +1475,35 @@ async function changeQty(type,i,delta){
 
 // EDIT ROWS - now handled by toggleRowEdit
 
-// ENTER KEY - smart navigation/save in theme table
+// ENTER KEY - smart navigation/save in theme & returns tables
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter')return;
   const el=e.target;
   if(!el.matches('select,input'))return;
   const tbody=el.closest('tbody');
-  if(!tbody||tbody.id!=='theme-body')return;
+  if(!tbody)return;
+  const isTheme=tbody.id==='theme-body';
+  const isRet=tbody.id==='returns-body';
+  if(!isTheme&&!isRet)return;
   e.preventDefault();
   const curRow=el.closest('tr');
   if(!curRow)return;
   const idx=parseInt(curRow.dataset.idx);
-  // if this is the category select (csel), move focus to item select
+  // if category select (csel), move to item select
   if(el.classList.contains('csel')){
     const itemSel=curRow.querySelector('.isel');
     if(itemSel){itemSel.focus();}
     return;
   }
-  // if this is the item select (isel), move focus to notes textarea
+  // if item select (isel), move to notes/reason textarea
   if(el.classList.contains('isel')){
     const note=curRow.querySelector('textarea');
-    if(note){note.focus();}
-    return;
+    if(note){note.focus();return;}
   }
-  // otherwise save
+  // otherwise save the row
   if(!isNaN(idx)){
-    saveThemeRow(idx);
+    if(isTheme) saveThemeRow(idx);
+    else if(isRet) saveRetRow(idx);
   }
 });
 

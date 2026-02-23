@@ -42,12 +42,25 @@ body{font-family:'Segoe UI','Tahoma',sans-serif;background:var(--g50);color:var(
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .slbl{color:var(--g400);font-size:11px;}
 
-/* BREADCRUMB */
-.bc{display:none;align-items:center;gap:8px;padding:10px 32px;background:var(--orb);border-bottom:1px solid var(--orbd);font-size:12px;color:var(--g600);}
-.bc.show{display:flex;}
-.bc span{cursor:pointer;color:var(--ord);font-weight:600;}
-.bc span:hover{text-decoration:underline;}
-.bc .sep{color:var(--g400);}
+/* BREADCRUMB - hidden, using topbar back btn only */
+.bc{display:none!important;}
+
+/* 3-DOT ACTION MENU */
+.act-wrap{position:relative;display:inline-block;}
+.act-btn{background:none;border:none;cursor:pointer;font-size:18px;color:var(--g400);padding:2px 6px;border-radius:5px;line-height:1;transition:all .15s;}
+.act-btn:hover{background:var(--g100);color:var(--g800);}
+.act-menu{display:none;position:absolute;left:0;top:100%;background:#fff;border:1px solid var(--g200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:130px;z-index:200;overflow:hidden;}
+.act-menu.open{display:block;}
+.act-menu button{display:flex;align-items:center;gap:7px;width:100%;padding:9px 14px;border:none;background:none;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-align:right;color:var(--g800);transition:background .12s;}
+.act-menu button:hover{background:var(--g100);}
+.act-menu button.danger{color:#ef4444;}.act-menu button.danger:hover{background:#fef2f2;}
+.act-menu button:not(:last-child){border-bottom:1px solid var(--g100);}
+
+/* QTY COUNTER */
+.qctr{display:inline-flex;align-items:center;gap:0;border:2px solid var(--g200);border-radius:8px;overflow:hidden;background:#fff;}
+.qctr button{background:none;border:none;padding:4px 9px;font-size:15px;font-weight:700;color:var(--g600);cursor:pointer;transition:all .12s;line-height:1;}
+.qctr button:hover{background:var(--orb);color:var(--or);}
+.qctr span{min-width:32px;text-align:center;font-size:13px;font-weight:800;color:var(--g900);padding:4px 2px;}
 
 /* LOADING */
 .loader{position:fixed;inset:0;background:rgba(255,255,255,.88);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
@@ -657,6 +670,7 @@ function renderThemeTable(){
     let itemOpts=`<option value="">-- اختر --</option>`+
       invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('')+
       `<option value="__c__" ${isCustom?'selected':''}>✏️ كتابة يدوي</option>`;
+    const qty=parseInt(row.qty)||0;
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td class="tdc"><select class="csel c${catAbbr(row.cat)}" onchange="onThemeCat(${i},this)">${catOpts}</select></td>
@@ -665,9 +679,23 @@ function renderThemeTable(){
         <input type="text" class="cedit" style="display:${isCustom?'block':'none'};padding-top:0;min-height:28px"
           value="${isCustom?row.item:''}" placeholder="اكتب الاسم..." onchange="updateTheme(${i},'item',this.value)">
       </td>
-      <td class="tdq"><input type="number" class="qinput" min="0" value="${row.qty||0}" onchange="updateTheme(${i},'qty',+this.value)"></td>
+      <td class="tdq">
+        <div class="qctr">
+          <button onclick="changeQty('theme',${i},-1)">−</button>
+          <span id="qty-theme-${i}">${qty}</span>
+          <button onclick="changeQty('theme',${i},1)">+</button>
+        </div>
+      </td>
       <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateTheme(${i},'note',this.value)">${row.note||''}</textarea></td>
-      <td class="tda"><button class="bdel" onclick="delThemeRow('${row.id}',${i})">✕</button></td>`;
+      <td class="tda">
+        <div class="act-wrap">
+          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
+          <div class="act-menu">
+            <button onclick="editThemeRow(${i})">✏️ تعديل</button>
+            <button class="danger" onclick="delThemeRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
+          </div>
+        </div>
+      </td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll('textarea').forEach(ar);
@@ -814,6 +842,7 @@ function renderReturns(){
     let itemOpts=`<option value="">-- اختر --</option>`+
       invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('')+
       `<option value="__c__" ${isCustom?'selected':''}>✏️ كتابة يدوي</option>`;
+    const qty=parseInt(row.qty)||0;
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td class="tdc"><select class="csel c${catAbbr(row.cat)}" onchange="onRetCat(${i},this)">${catOpts}</select></td>
@@ -822,9 +851,23 @@ function renderReturns(){
         <input type="text" class="cedit" style="display:${isCustom?'block':'none'};padding-top:0;min-height:28px"
           value="${isCustom?row.item:''}" placeholder="اكتب الاسم..." onchange="updateRet(${i},'item',this.value)">
       </td>
-      <td class="tdq"><input type="number" class="qinput" min="0" value="${row.qty||0}" onchange="updateRet(${i},'qty',+this.value)"></td>
+      <td class="tdq">
+        <div class="qctr">
+          <button onclick="changeQty('ret',${i},-1)">−</button>
+          <span id="qty-ret-${i}">${qty}</span>
+          <button onclick="changeQty('ret',${i},1)">+</button>
+        </div>
+      </td>
       <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateRet(${i},'note',this.value)">${row.note||''}</textarea></td>
-      <td class="tda"><button class="bdel" onclick="delRetRow('${row.id}',${i})">✕</button></td>`;
+      <td class="tda">
+        <div class="act-wrap">
+          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
+          <div class="act-menu">
+            <button onclick="editRetRow(${i})">✏️ تعديل</button>
+            <button class="danger" onclick="delRetRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
+          </div>
+        </div>
+      </td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll('textarea').forEach(ar);
@@ -877,7 +920,15 @@ async function renderInventory(){
       <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','name',this.value)">${r.name}</textarea></td>
       <td class="tdq" style="color:var(--or);font-weight:700;font-size:16px">${p}</td>
       <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','note',this.value)">${r.note||''}</textarea></td>
-      <td class="tda"><button class="bdel" onclick="delInvRow('${r.id}',${i})">✕</button></td>`;
+      <td class="tda">
+        <div class="act-wrap">
+          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
+          <div class="act-menu">
+            <button onclick="editInvRow('${r.id}')">✏️ تعديل</button>
+            <button class="danger" onclick="delInvRow('${r.id}',${i});closeAllMenus()">🗑️ حذف</button>
+          </div>
+        </div>
+      </td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll('textarea').forEach(ar);
@@ -930,7 +981,14 @@ function renderTD(type){
         <td><textarea class="cedit" style="font-weight:700" rows="1" oninput="ar(this)" onchange="updateTD(type,'${row.id}','name',this.value)">${row.name||''}</textarea></td>
         <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" oninput="ar(this)" onchange="updateTD('prep','${row.id}','detail',this.value)">${row.detail||''}</textarea></td>
         <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" placeholder="مكونات إضافية..." oninput="ar(this)" onchange="updateTD('prep','${row.id}','extra',this.value)">${row.extra||''}</textarea></td>
-        <td class="tda"><button class="bdel" onclick="delTD('prep','${row.id}',${i})">✕</button></td>`;
+        <td class="tda">
+          <div class="act-wrap">
+            <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
+            <div class="act-menu">
+              <button class="danger" onclick="delTD('prep','${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
+            </div>
+          </div>
+        </td>`;
     } else if(type==='recv'){
       const invItems=inventory.filter(x=>x.cat===row.cat);
       const isC=row.item&&!invItems.find(x=>x.name===row.item);
@@ -939,15 +997,29 @@ function renderTD(type){
         invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('')+
         `<option value="__c__" ${isC?'selected':''}>✏️ يدوي</option>`;
       const statOpts=['لم يُستلم','مكتمل','ناقص','تالف'].map(s=>`<option ${s===row.status?'selected':''}>${s}</option>`).join('');
+      const qty=parseInt(row.qty)||0;
       tr.innerHTML=`
         <td class="tdc"><select class="csel c${catAbbr(row.cat||'components')}" onchange="onTDRecvCat(${i},this)">${catOpts}</select></td>
         <td>
           <select class="isel" onchange="onTDRecvItem(${i},this)">${itemOpts}</select>
           <input type="text" class="cedit" style="display:${isC?'block':'none'};padding-top:0;min-height:28px" value="${isC?row.item:''}" onchange="updateTD('recv','${row.id}','item',this.value)">
         </td>
-        <td class="tdq"><input type="number" class="qinput" min="0" value="${row.qty||0}" onchange="updateTD('recv','${row.id}','qty',+this.value)"></td>
+        <td class="tdq">
+          <div class="qctr">
+            <button onclick="changeQty('tdrecv',${i},-1)">−</button>
+            <span id="qty-tdrecv-${i}">${qty}</span>
+            <button onclick="changeQty('tdrecv',${i},1)">+</button>
+          </div>
+        </td>
         <td><select class="isel" style="color:${row.status==='مكتمل'?'#16A34A':row.status==='تالف'?'#ef4444':'var(--g800)'}" onchange="updateTD('recv','${row.id}','status',this.value)">${statOpts}</select></td>
-        <td class="tda"><button class="bdel" onclick="delTD('recv','${row.id}',${i})">✕</button></td>`;
+        <td class="tda">
+          <div class="act-wrap">
+            <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
+            <div class="act-menu">
+              <button class="danger" onclick="delTD('recv','${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
+            </div>
+          </div>
+        </td>`;
     } else {
       tr.innerHTML=`
         <td style="text-align:center;vertical-align:middle;padding:9px 5px">
@@ -955,7 +1027,14 @@ function renderTD(type){
         </td>
         <td><textarea class="cedit" rows="1" oninput="ar(this)" style="${row.done?'text-decoration:line-through;color:var(--g400)':''}" onchange="updateTD('check','${row.id}','name',this.value)">${row.name||''}</textarea></td>
         <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" oninput="ar(this)" onchange="updateTD('check','${row.id}','note',this.value)">${row.note||''}</textarea></td>
-        <td class="tda"><button class="bdel" onclick="delTD('check','${row.id}',${i})">✕</button></td>`;
+        <td class="tda">
+          <div class="act-wrap">
+            <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
+            <div class="act-menu">
+              <button class="danger" onclick="delTD('check','${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
+            </div>
+          </div>
+        </td>`;
     }
     tb.appendChild(tr);
   });
@@ -1027,6 +1106,49 @@ function catAbbr(c){return {components:'c',machines:'m',kits:'k',materials:'mt'}
 function catBg(c){return {components:'#EFF6FF',machines:'#F0FDF4',kits:'#FFF7ED',materials:'#FAF5FF'}[c]||'#f3f4f6';}
 function catClr(c){return {components:'#2563EB',machines:'#16A34A',kits:'#EA580C',materials:'#9333EA'}[c]||'#374151';}
 function ar(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+
+// 3-DOT MENU
+function toggleMenu(btn){
+  const menu=btn.nextElementSibling;
+  const isOpen=menu.classList.contains('open');
+  closeAllMenus();
+  if(!isOpen) menu.classList.add('open');
+}
+function closeAllMenus(){document.querySelectorAll('.act-menu.open').forEach(m=>m.classList.remove('open'));}
+document.addEventListener('click',e=>{if(!e.target.closest('.act-wrap'))closeAllMenus();});
+
+// QTY COUNTER
+async function changeQty(type,i,delta){
+  let row,field='qty',tbl;
+  if(type==='theme'){row=themeRows[i];tbl='school_themes';}
+  else if(type==='ret'){row=returnRows[i];tbl='school_returns';}
+  else if(type==='tdrecv'){row=tdRecv[i];tbl='techday_recv';}
+  if(!row)return;
+  const newQty=Math.max(0,(parseInt(row.qty)||0)+delta);
+  row.qty=newQty;
+  const span=document.getElementById(`qty-${type}-${i}`);
+  if(span)span.textContent=newQty;
+  await db.from(tbl).update({qty:newQty}).eq('id',row.id);
+}
+
+// EDIT ROWS (focus textarea / open select)
+function editThemeRow(i){
+  const rows=document.getElementById('theme-body').querySelectorAll('tr');
+  if(rows[i]){const ta=rows[i].querySelector('select.isel');if(ta)ta.focus();}
+}
+function editRetRow(i){
+  const rows=document.getElementById('returns-body').querySelectorAll('tr');
+  if(rows[i]){const ta=rows[i].querySelector('select.isel');if(ta)ta.focus();}
+}
+function editInvRow(id){
+  const r=inventory.find(x=>x.id===id);
+  if(!r)return;
+  const allRows=document.getElementById('inv-body').querySelectorAll('tr');
+  allRows.forEach(tr=>{
+    const ta=tr.querySelector('textarea');
+    if(ta&&ta.textContent.trim()===r.name){ta.focus();ta.select();}
+  });
+}
 
 // ===== INIT =====
 async function init(){

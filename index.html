@@ -45,16 +45,14 @@ body{font-family:'Segoe UI','Tahoma',sans-serif;background:var(--g50);color:var(
 /* BREADCRUMB - hidden, using topbar back btn only */
 .bc{display:none!important;}
 
-/* 3-DOT ACTION MENU */
-.act-wrap{position:relative;display:inline-block;}
-.act-btn{background:none;border:none;cursor:pointer;font-size:18px;color:var(--g400);padding:2px 6px;border-radius:5px;line-height:1;transition:all .15s;}
-.act-btn:hover{background:var(--g100);color:var(--g800);}
-.act-menu{display:none;position:absolute;left:0;top:100%;background:#fff;border:1px solid var(--g200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:130px;z-index:200;overflow:hidden;}
-.act-menu.open{display:block;}
-.act-menu button{display:flex;align-items:center;gap:7px;width:100%;padding:9px 14px;border:none;background:none;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-align:right;color:var(--g800);transition:background .12s;}
-.act-menu button:hover{background:var(--g100);}
-.act-menu button.danger{color:#ef4444;}.act-menu button.danger:hover{background:#fef2f2;}
-.act-menu button:not(:last-child){border-bottom:1px solid var(--g100);}
+/* DIRECT ACTION BUTTONS */
+.act-wrap{display:inline-flex;gap:4px;align-items:center;}
+.bedit{background:none;border:1.5px solid var(--g200);color:var(--g600);cursor:pointer;font-size:12px;padding:4px 9px;border-radius:6px;transition:all .15s;font-family:inherit;font-weight:600;white-space:nowrap;}
+.bedit:hover{border-color:var(--or);color:var(--or);background:var(--orb);}
+.bsave{background:var(--or);border:1.5px solid var(--or);color:#fff;cursor:pointer;font-size:12px;padding:4px 9px;border-radius:6px;transition:all .15s;font-family:inherit;font-weight:600;white-space:nowrap;display:none;}
+.bsave:hover{background:var(--ord);}
+.bdel2{background:none;border:1.5px solid #fca5a5;color:#ef4444;cursor:pointer;font-size:12px;padding:4px 9px;border-radius:6px;transition:all .15s;font-family:inherit;font-weight:600;white-space:nowrap;}
+.bdel2:hover{background:#fef2f2;border-color:#ef4444;}
 
 /* QTY COUNTER */
 .qctr{display:inline-flex;align-items:center;gap:0;border:2px solid var(--g200);border-radius:8px;overflow:hidden;background:#fff;}
@@ -126,7 +124,10 @@ thead tr{background:linear-gradient(135deg,var(--ord),var(--or));}
 thead th{padding:12px 14px;color:#fff;font-size:11px;font-weight:700;text-align:right;white-space:nowrap;}
 thead th.tc{width:120px;}
 thead th.tq{width:75px;text-align:center;}
-thead th.ta{width:40px;text-align:center;}
+thead th.ta{width:130px;text-align:center;}
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F2937;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
 tbody tr:nth-child(even){background:#fafafa;}
 tbody tr:nth-child(odd){background:#fff;}
 tbody tr:hover{background:#FFF7ED;}
@@ -200,6 +201,7 @@ select.isel:focus{background:rgba(249,115,22,.04);}
 <body>
 
 <div class="loader" id="loader"><div class="spin"></div><div class="spin-lbl">جاري التحميل...</div></div>
+<div class="toast" id="toast"></div>
 
 <!-- LOGIN -->
 <div id="login-screen">
@@ -307,7 +309,7 @@ select.isel:focus{background:rgba(249,115,22,.04);}
       <table>
         <thead><tr>
           <th class="tc">الصنف</th><th>المادة / العنصر</th>
-          <th class="tq">العدد</th><th>ملاحظات</th><th class="ta"></th>
+          <th class="tq">العدد</th><th>ملاحظات</th><th class="ta">الإجراءات</th>
         </tr></thead>
         <tbody id="theme-body"></tbody>
       </table>
@@ -319,19 +321,15 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   <div class="page" id="page-annual">
     <div class="ph">
       <div class="ptitle" id="an-title">السنة الدراسية</div>
-    </div>
-    <div class="tbar" style="margin-bottom:18px">
-      <div class="yr-tabs" id="yr-tabs"></div>
+      <div class="tbar">
+        <select id="yr-select" class="btn bou" style="min-width:160px" onchange="onYearSelect(this.value)">
+          <option value="">-- اختر السنة --</option>
+        </select>
+        <button class="btn bon" onclick="openModal('modal-year')">＋ إضافة سنة دراسية</button>
+      </div>
     </div>
     <!-- Theme checkboxes for print -->
     <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap" id="an-theme-filters">
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
-        <input type="checkbox" checked onchange="renderAnnualTable()"> Theme One</label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
-        <input type="checkbox" checked onchange="renderAnnualTable()"> Theme Two</label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
-        <input type="checkbox" checked onchange="renderAnnualTable()"> Theme Three</label>
-    </div>
     <div id="annual-tables"></div>
   </div>
 
@@ -345,7 +343,7 @@ select.isel:focus{background:rgba(249,115,22,.04);}
       <table>
         <thead><tr>
           <th class="tc">الصنف</th><th>الاسم</th>
-          <th class="tq">العدد</th><th>السبب</th><th class="ta"></th>
+          <th class="tq">العدد</th><th>السبب</th><th class="ta">الإجراءات</th>
         </tr></thead>
         <tbody id="returns-body"></tbody>
       </table>
@@ -369,7 +367,7 @@ select.isel:focus{background:rgba(249,115,22,.04);}
       <table>
         <thead><tr>
           <th class="tc">الصنف</th><th>المسمى</th>
-          <th class="tq">إجمالي المسحوب</th><th>ملاحظات</th><th class="ta"></th>
+          <th class="tq">إجمالي المسحوب</th><th>ملاحظات</th><th class="ta">الإجراءات</th>
         </tr></thead>
         <tbody id="inv-body"></tbody>
       </table>
@@ -403,17 +401,19 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   <div class="page" id="page-techday-prep">
     <div class="ph">
       <div class="ptitle">📋 خطة التحضير</div>
-      <div class="tbar">
-        <button class="badd" onclick="addTDRow('prep')">＋ إضافة خطوة</button>
-        <button class="btn bou" onclick="window.print()">🖨️ PDF</button>
-      </div>
+      <button class="badd" onclick="addTDRow('prep')">＋ إضافة خطوة</button>
+    </div>
+    <div class="tbar" style="margin-bottom:16px;gap:10px">
+      <select id="td-year-prep" class="btn bou" style="min-width:130px" onchange="loadTDByDate('prep')"><option value="">السنة</option></select>
+      <select id="td-month-prep" class="btn bou" style="min-width:130px" onchange="loadTDByDate('prep')"><option value="">الشهر</option></select>
+      <select id="td-day-prep" class="btn bou" style="min-width:130px" onchange="loadTDByDate('prep')"><option value="">اليوم</option></select>
     </div>
     <div class="tcard">
       <table>
         <thead><tr>
           <th style="width:40px;text-align:center">#</th>
           <th style="width:160px">الخطوة</th><th>التفاصيل</th>
-          <th style="width:150px">مكونات إضافية</th><th class="ta"></th>
+          <th style="width:150px">مكونات إضافية</th><th class="ta">الإجراءات</th>
         </tr></thead>
         <tbody id="tdprep-body"></tbody>
       </table>
@@ -427,11 +427,16 @@ select.isel:focus{background:rgba(249,115,22,.04);}
       <div class="ptitle">📥 الاستلامات</div>
       <button class="badd" onclick="addTDRow('recv')">＋ إضافة صف</button>
     </div>
+    <div class="tbar" style="margin-bottom:16px;gap:10px">
+      <select id="td-year-recv" class="btn bou" style="min-width:130px" onchange="loadTDByDate('recv')"><option value="">السنة</option></select>
+      <select id="td-month-recv" class="btn bou" style="min-width:130px" onchange="loadTDByDate('recv')"><option value="">الشهر</option></select>
+      <select id="td-day-recv" class="btn bou" style="min-width:130px" onchange="loadTDByDate('recv')"><option value="">اليوم</option></select>
+    </div>
     <div class="tcard">
       <table>
         <thead><tr>
           <th class="tc">الصنف</th><th>المادة / المعدة</th>
-          <th class="tq">العدد</th><th>الحالة</th><th class="ta"></th>
+          <th class="tq">العدد</th><th>الحالة</th><th class="ta">الإجراءات</th>
         </tr></thead>
         <tbody id="tdrecv-body"></tbody>
       </table>
@@ -445,11 +450,17 @@ select.isel:focus{background:rgba(249,115,22,.04);}
       <div class="ptitle">✅ Check List</div>
       <button class="badd" onclick="addTDRow('check')">＋ إضافة بند</button>
     </div>
+    <div class="tbar" style="margin-bottom:16px;gap:10px">
+      <select id="td-year-check" class="btn bou" style="min-width:130px" onchange="loadTDByDate('check')"><option value="">السنة</option></select>
+      <select id="td-month-check" class="btn bou" style="min-width:130px" onchange="loadTDByDate('check')"><option value="">الشهر</option></select>
+      <select id="td-day-check" class="btn bou" style="min-width:130px" onchange="loadTDByDate('check')"><option value="">اليوم</option></select>
+    </div>
     <div class="tcard">
       <table>
         <thead><tr>
           <th style="width:40px;text-align:center">✓</th>
-          <th>البند</th><th>الملاحظات</th><th class="ta"></th>
+          <th>Check List</th><th>الصنف</th><th>الاسم</th>
+          <th class="tq">العدد</th><th>ملاحظات</th><th class="ta">الإجراءات</th>
         </tr></thead>
         <tbody id="tdcheck-body"></tbody>
       </table>
@@ -523,9 +534,9 @@ function goTo(page,extra){
   else if(page==='annual'){curAnnualSchoolId=extra;loadAnnual();}
   else if(page==='returns'){curReturnSchoolId=extra;loadReturns();}
   else if(page==='inventory'){loadInventory();}
-  else if(page==='techday-prep'){loadTD('prep');}
-  else if(page==='techday-recv'){loadTD('recv');}
-  else if(page==='techday-check'){loadTD('check');}
+  else if(page==='techday-prep'){initTDDateSelectors('prep').then(()=>loadTD('prep'));}
+  else if(page==='techday-recv'){initTDDateSelectors('recv').then(()=>loadTD('recv'));}
+  else if(page==='techday-check'){initTDDateSelectors('check').then(()=>loadTD('check'));}
   else if(page==='audit'){loadAudit();}
 }
 function goBack(){
@@ -653,23 +664,6 @@ async function loadTheme(){
   themeRows=data||[];
   renderThemeTable();uh();
 }
-// ===== VIEW/EDIT TOGGLE =====
-function toggleRowEdit(btn,type,i){
-  let tbody,rows;
-  if(type==='theme'){tbody='theme-body';}
-  else if(type==='ret'){tbody='returns-body';}
-  else{tbody='inv-body';}
-  const tr=document.querySelectorAll('#'+tbody+' tr')[i];
-  if(!tr)return;
-  const isEdit=tr.dataset.mode==='edit';
-  tr.dataset.mode=isEdit?'view':'edit';
-  tr.querySelectorAll('.rv').forEach(el=>el.style.display=isEdit?'':'none');
-  tr.querySelectorAll('.re').forEach(el=>el.style.display=isEdit?'none':'');
-  if(!isEdit){
-    const first=tr.querySelector('.re select,.re textarea,.re input');
-    if(first){first.focus();}
-  }
-}
 function renderThemeTable(){
   const tb=document.getElementById('theme-body');
   tb.innerHTML='';
@@ -681,22 +675,22 @@ function renderThemeTable(){
       invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('');
     const qty=parseInt(row.qty)||0;
     const tr=document.createElement('tr');
-    tr.dataset.mode='view';
+    tr.dataset.mode=row._new?'edit':'view';
     tr.innerHTML=`
       <td class="tdc">
         <span class="rv"><span class="csel c${catAbbr(row.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(row.cat)}</span></span>
-        <span class="re" style="display:none"><select class="csel c${catAbbr(row.cat)}" onchange="onThemeCat(${i},this)">${catOpts}</select></span>
+        <span class="re" style="${row._new?'':'display:none'}"><select class="csel c${catAbbr(row.cat)}" onchange="onThemeCat(${i},this)">${catOpts}</select></span>
       </td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${row.item||'<span style="color:var(--g400)">—</span>'}</span>
-        <span class="re" style="display:none">
+        <span class="re" style="${row._new?'':'display:none'}">
           <select class="isel" onchange="onThemeItem(${i},this)">${itemOpts}</select>
-          ${isCustom?`<input type="text" class="cedit" style="padding-top:0;min-height:28px" value="${row.item}" placeholder="اكتب الاسم..." onchange="updateTheme(${i},'item',this.value)">`:''}
+          ${isCustom?`<input type="text" class="cedit" style="padding-top:0;min-height:28px" value="${row.item}" placeholder="اكتب الاسم..." oninput="themeRows[${i}].item=this.value">`:''}
         </span>
       </td>
       <td class="tdq">
         <span class="rv" style="font-weight:700;color:var(--or);font-size:15px">${qty}</span>
-        <span class="re" style="display:none">
+        <span class="re" style="${row._new?'':'display:none'}">
           <div class="qctr">
             <button onclick="changeQty('theme',${i},-1)">−</button>
             <span id="qty-theme-${i}">${qty}</span>
@@ -706,35 +700,50 @@ function renderThemeTable(){
       </td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${row.note||'<span style="color:var(--g400)">—</span>'}</span>
-        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateTheme(${i},'note',this.value)">${row.note||''}</textarea></span>
+        <span class="re" style="${row._new?'':'display:none'}"><textarea class="cedit" rows="1" oninput="ar(this);themeRows[${i}].note=this.value">${row.note||''}</textarea></span>
       </td>
       <td class="tda">
         <div class="act-wrap">
-          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
-          <div class="act-menu">
-            <button onclick="toggleRowEdit(this,'theme',${i});closeAllMenus()">✏️ تعديل</button>
-            <button class="danger" onclick="delThemeRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
-          </div>
+          <button class="bedit" ${row._new?'style="display:none"':''} onclick="startRowEdit(this,'theme',${i})">✏️ تعديل</button>
+          <button class="bsave" ${row._new?'style="display:inline-block"':''} onclick="saveThemeRow(${i},this)">💾 حفظ</button>
+          <button class="bdel2" onclick="delThemeRow('${row.id}',${i})">🗑️ حذف</button>
         </div>
       </td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll('textarea').forEach(ar);
 }
-function onThemeCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;updateTheme(i,'cat',sel.value);setTimeout(()=>renderThemeTable(),50);}
+function onThemeCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;themeRows[i].cat=sel.value;setTimeout(()=>renderThemeTable(),50);}
 function onThemeItem(i,sel){
-  updateTheme(i,'item',sel.value);
+  themeRows[i].item=sel.value;
+}
+async function saveThemeRow(i,btn){
+  const r=themeRows[i];
+  if(!r.item){showToast('⚠️ يرجى اختيار المادة');return;}
+  ld();
+  if(r._new){
+    delete r._new;
+    await db.from('school_themes').insert(r);
+  } else {
+    await db.from('school_themes').update({cat:r.cat,item:r.item,qty:r.qty,note:r.note}).eq('id',r.id);
+  }
+  await loadTheme();uh();showToast('✅ تم الحفظ');
 }
 async function updateTheme(i,field,val){
   const r=themeRows[i];if(!r)return;
   r[field]=val;
-  await db.from('school_themes').update({[field]:val}).eq('id',r.id);
 }
 async function addThemeRow(){
-  ld();
   const id='st'+Date.now();
-  await db.from('school_themes').insert({id,school_id:curSchoolId,theme_index:curTheme,cat:'components',item:'',qty:0,note:'',sort_order:themeRows.length});
-  await loadTheme();uh();
+  const newRow={id,school_id:curSchoolId,theme_index:curTheme,cat:'components',item:'',qty:0,note:'',sort_order:themeRows.length,_new:true};
+  themeRows.push(newRow);
+  renderThemeTable();
+  const tb=document.getElementById('theme-body');
+  const lastTr=tb.querySelector('tr:last-child');
+  if(lastTr){
+    const first=lastTr.querySelector('select,textarea,input');
+    if(first)first.focus();
+  }
 }
 async function delThemeRow(id,i){
   if(!confirm('تحذف الصف؟'))return;
@@ -754,6 +763,8 @@ async function loadAnnual(){
   renderYearTabs(years);
   if(years.length>0){
     if(!curYear) curYear=years[0].id;
+    const sel=document.getElementById('yr-select');
+    if(sel)sel.value=curYear;
     await loadAnnualRows();
   } else {
     curYear=null;
@@ -762,20 +773,28 @@ async function loadAnnual(){
   uh();
 }
 function renderYearTabs(years){
-  const t=document.getElementById('yr-tabs');
-  t.innerHTML='';
+  const sel=document.getElementById('yr-select');
+  if(!sel)return;
+  sel.innerHTML='<option value="">-- اختر السنة --</option>';
   years.forEach(y=>{
-    const b=document.createElement('button');
-    b.className='yr-tab'+(y.id===curYear?' active':'');
-    b.textContent=y.name;
-    b.onclick=()=>{curYear=y.id;document.querySelectorAll('.yr-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');loadAnnualRows();};
-    t.appendChild(b);
+    const o=document.createElement('option');
+    o.value=y.id;o.textContent=y.name;
+    if(y.id===curYear)o.selected=true;
+    sel.appendChild(o);
   });
+}
+function onYearSelect(val){
+  curYear=val;
+  if(val)loadAnnualRows();
+  else document.getElementById('annual-tables').innerHTML='<div style="text-align:center;padding:40px;color:var(--g400)">اختر سنة دراسية للعرض</div>';
 }
 async function loadAnnualRows(){
   ld();
   const {data:themes}=await db.from('school_themes').select('*').eq('school_id',curAnnualSchoolId).order('theme_index').order('sort_order');
   annualRows=themes||[];
+  // Build theme filters
+  const f=document.getElementById('an-theme-filters');
+  if(f){f.innerHTML=['Theme One','Theme Two','Theme Three'].map((t,i)=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" checked onchange="renderAnnualTable()"> ${t}</label>`).join('');}
   renderAnnualTable();uh();
 }
 function renderAnnualTable(){
@@ -861,21 +880,21 @@ function renderReturns(){
       invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('');
     const qty=parseInt(row.qty)||0;
     const tr=document.createElement('tr');
-    tr.dataset.mode='view';
+    tr.dataset.mode=row._new?'edit':'view';
     tr.innerHTML=`
       <td class="tdc">
         <span class="rv"><span class="csel c${catAbbr(row.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(row.cat)}</span></span>
-        <span class="re" style="display:none"><select class="csel c${catAbbr(row.cat)}" onchange="onRetCat(${i},this)">${catOpts}</select></span>
+        <span class="re" style="${row._new?'':'display:none'}"><select class="csel c${catAbbr(row.cat)}" onchange="onRetCat(${i},this)">${catOpts}</select></span>
       </td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${row.item||'<span style="color:var(--g400)">—</span>'}</span>
-        <span class="re" style="display:none">
+        <span class="re" style="${row._new?'':'display:none'}">
           <select class="isel" onchange="onRetItem(${i},this)">${itemOpts}</select>
         </span>
       </td>
       <td class="tdq">
         <span class="rv" style="font-weight:700;color:var(--or);font-size:15px">${qty}</span>
-        <span class="re" style="display:none">
+        <span class="re" style="${row._new?'':'display:none'}">
           <div class="qctr">
             <button onclick="changeQty('ret',${i},-1)">−</button>
             <span id="qty-ret-${i}">${qty}</span>
@@ -885,34 +904,46 @@ function renderReturns(){
       </td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${row.reason||'<span style="color:var(--g400)">—</span>'}</span>
-        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateRet(${i},'reason',this.value)">${row.reason||''}</textarea></span>
+        <span class="re" style="${row._new?'':'display:none'}"><textarea class="cedit" rows="1" oninput="ar(this);returnRows[${i}].reason=this.value">${row.reason||''}</textarea></span>
       </td>
       <td class="tda">
         <div class="act-wrap">
-          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
-          <div class="act-menu">
-            <button onclick="toggleRowEdit(this,'ret',${i});closeAllMenus()">✏️ تعديل</button>
-            <button class="danger" onclick="delRetRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
-          </div>
+          <button class="bedit" ${row._new?'style="display:none"':''} onclick="startRowEdit(this,'ret',${i})">✏️ تعديل</button>
+          <button class="bsave" ${row._new?'style="display:inline-block"':''} onclick="saveRetRow(${i},this)">💾 حفظ</button>
+          <button class="bdel2" onclick="delRetRow('${row.id}',${i})">🗑️ حذف</button>
         </div>
       </td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll('textarea').forEach(ar);
 }
-function onRetCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;updateRet(i,'cat',sel.value);setTimeout(()=>renderReturns(),50);}
+function onRetCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;returnRows[i].cat=sel.value;setTimeout(()=>renderReturns(),50);}
 function onRetItem(i,sel){
-  updateRet(i,'item',sel.value);
+  returnRows[i].item=sel.value;
+}
+async function saveRetRow(i,btn){
+  const r=returnRows[i];
+  if(!r.item){showToast('⚠️ يرجى اختيار الاسم');return;}
+  ld();
+  if(r._new){
+    delete r._new;
+    await db.from('school_returns').insert(r);
+  } else {
+    await db.from('school_returns').update({cat:r.cat,item:r.item,qty:r.qty,reason:r.reason}).eq('id',r.id);
+  }
+  await loadReturns();uh();showToast('✅ تم الحفظ');
 }
 async function updateRet(i,field,val){
   const r=returnRows[i];if(!r)return;r[field]=val;
-  await db.from('school_returns').update({[field]:val}).eq('id',r.id);
 }
 async function addReturnRow(){
-  ld();
   const id='sr'+Date.now();
-  await db.from('school_returns').insert({id,school_id:curReturnSchoolId,cat:'components',item:'',qty:0,reason:''});
-  await loadReturns();uh();
+  const newRow={id,school_id:curReturnSchoolId,cat:'components',item:'',qty:0,reason:'',_new:true};
+  returnRows.push(newRow);
+  renderReturns();
+  const tb=document.getElementById('returns-body');
+  const lastTr=tb.querySelector('tr:last-child');
+  if(lastTr){const first=lastTr.querySelector('select,textarea,input');if(first)first.focus();}
 }
 async function delRetRow(id,i){
   if(!confirm('تحذف الصف؟'))return;
@@ -941,28 +972,26 @@ async function renderInventory(){
   rows.forEach(({r,p},i)=>{
     const catOpts=['components','machines','kits','materials'].map(c=>`<option value="${c}" ${c===r.cat?'selected':''}>${catLabel(c)}</option>`).join('');
     const tr=document.createElement('tr');
-    tr.dataset.mode='view';
+    tr.dataset.mode=r._new?'edit':'view';
     tr.innerHTML=`
       <td class="tdc">
         <span class="rv"><span class="csel c${catAbbr(r.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(r.cat)}</span></span>
-        <span class="re" style="display:none"><select class="csel c${catAbbr(r.cat)}" onchange="updateInv('${r.id}','cat',this.value);this.className='csel c'+catAbbr(this.value);updateInvStats()">${catOpts}</select></span>
+        <span class="re" style="${r._new?'':'display:none'}"><select class="csel c${catAbbr(r.cat)}" onchange="inventory[${i}].cat=this.value;this.className='csel c'+catAbbr(this.value);updateInvStats()">${catOpts}</select></span>
       </td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${r.name}</span>
-        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','name',this.value)">${r.name}</textarea></span>
+        <span class="re" style="${r._new?'':'display:none'}"><textarea class="cedit" rows="1" oninput="ar(this);inventory[${i}].name=this.value">${r.name}</textarea></span>
       </td>
       <td class="tdq" style="color:var(--or);font-weight:700;font-size:16px">${p}</td>
       <td>
         <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${r.note||'<span style="color:var(--g400)">—</span>'}</span>
-        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','note',this.value)">${r.note||''}</textarea></span>
+        <span class="re" style="${r._new?'':'display:none'}"><textarea class="cedit" rows="1" oninput="ar(this);inventory[${i}].note=this.value">${r.note||''}</textarea></span>
       </td>
       <td class="tda">
         <div class="act-wrap">
-          <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
-          <div class="act-menu">
-            <button onclick="toggleRowEdit(this,'inv',${i});closeAllMenus()">✏️ تعديل</button>
-            <button class="danger" onclick="delInvRow('${r.id}',${i});closeAllMenus()">🗑️ حذف</button>
-          </div>
+          <button class="bedit" ${r._new?'style="display:none"':''} onclick="startRowEdit(this,'inv',${i})">✏️ تعديل</button>
+          <button class="bsave" ${r._new?'style="display:inline-block"':''} onclick="saveInvRow(${i},this)">💾 حفظ</button>
+          <button class="bdel2" onclick="delInvRow('${r.id}',${i})">🗑️ حذف</button>
         </div>
       </td>`;
     tb.appendChild(tr);
@@ -976,13 +1005,27 @@ function updateInvStats(){
 }
 async function updateInv(id,field,val){
   const r=inventory.find(x=>x.id===id);if(r)r[field]=val;
-  await db.from('inventory').update({[field]:val}).eq('id',id);
+}
+async function saveInvRow(i,btn){
+  const r=inventory[i];
+  if(!r.name||!r.name.trim()){showToast('⚠️ يرجى كتابة المسمى');return;}
+  ld();
+  if(r._new){
+    delete r._new;
+    await db.from('inventory').insert(r);
+  } else {
+    await db.from('inventory').update({cat:r.cat,name:r.name,note:r.note}).eq('id',r.id);
+  }
+  await loadInventory();uh();showToast('✅ تم الحفظ');
 }
 async function addInvRow(){
-  ld();
   const id='i'+Date.now();
-  await db.from('inventory').insert({id,cat:'components',name:'صنف جديد',note:''});
-  await loadInventory();uh();
+  const newRow={id,cat:'components',name:'',note:'',_new:true};
+  inventory.push(newRow);
+  await renderInventory();
+  const tb=document.getElementById('inv-body');
+  const lastTr=tb.querySelector('tr:last-child');
+  if(lastTr){const first=lastTr.querySelector('textarea,select');if(first)first.focus();}
 }
 async function delInvRow(id,i){
   if(!confirm('تحذف الصنف؟'))return;ld();
@@ -992,9 +1035,44 @@ async function delInvRow(id,i){
 
 // ===== TECH DAY =====
 const tdTables={prep:'tdprep-body',recv:'tdrecv-body',check:'tdcheck-body'};
+let tdDate={prep:{year:'',month:'',day:''},recv:{year:'',month:'',day:''},check:{year:'',month:'',day:''}};
+
+async function initTDDateSelectors(type){
+  // Populate year selector with existing years from DB
+  const {data}=await db.from('techday_'+type).select('td_year,td_month,td_day').order('td_year').order('td_month').order('td_day');
+  const years=[...new Set((data||[]).map(r=>r.td_year).filter(Boolean))];
+  const months=[...new Set((data||[]).map(r=>r.td_month).filter(Boolean))];
+  const days=[...new Set((data||[]).map(r=>r.td_day).filter(Boolean))];
+  const ySel=document.getElementById('td-year-'+type);
+  const mSel=document.getElementById('td-month-'+type);
+  const dSel=document.getElementById('td-day-'+type);
+  if(!ySel)return;
+  const now=new Date();
+  // Years: current year +2 and also existing
+  const allYears=[...new Set([...years,String(now.getFullYear()),String(now.getFullYear()+1)])].sort();
+  ySel.innerHTML='<option value="">السنة</option>'+allYears.map(y=>`<option value="${y}">${y}</option>`).join('');
+  // Months Arabic
+  const monthNames=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  mSel.innerHTML='<option value="">الشهر</option>'+monthNames.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  dSel.innerHTML='<option value="">اليوم</option>'+Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
+}
+
+async function loadTDByDate(type){
+  const y=document.getElementById('td-year-'+type)?.value||'';
+  const m=document.getElementById('td-month-'+type)?.value||'';
+  const d=document.getElementById('td-day-'+type)?.value||'';
+  tdDate[type]={year:y,month:m,day:d};
+  await loadTD(type);
+}
+
 async function loadTD(type){
   ld();
-  const {data}=await db.from('techday_'+type).select('*').order('sort_order');
+  let q=db.from('techday_'+type).select('*').order('sort_order');
+  const {year,month,day}=tdDate[type]||{};
+  if(year) q=q.eq('td_year',year);
+  if(month) q=q.eq('td_month',month);
+  if(day) q=q.eq('td_day',day);
+  const {data}=await q;
   if(type==='prep') tdPrep=data||[];
   else if(type==='recv') tdRecv=data||[];
   else tdCheck=data||[];
@@ -1009,20 +1087,19 @@ function renderTD(type){
   rows.forEach((row,i)=>{
     const [bg,clr]=NB[i%NB.length].split(';');
     const tr=document.createElement('tr');
+    const isNew=!!row._new;
     if(type==='prep'){
       tr.innerHTML=`
         <td style="text-align:center;vertical-align:middle;padding:9px 5px">
           <span style="display:inline-flex;width:26px;height:26px;border-radius:7px;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:${bg};color:${clr}">${i+1}</span>
         </td>
-        <td><textarea class="cedit" style="font-weight:700" rows="1" oninput="ar(this)" onchange="updateTD(type,'${row.id}','name',this.value)">${row.name||''}</textarea></td>
-        <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" oninput="ar(this)" onchange="updateTD('prep','${row.id}','detail',this.value)">${row.detail||''}</textarea></td>
-        <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" placeholder="مكونات إضافية..." oninput="ar(this)" onchange="updateTD('prep','${row.id}','extra',this.value)">${row.extra||''}</textarea></td>
+        <td><textarea class="cedit" style="font-weight:700" rows="1" oninput="ar(this);tdPrep[${i}].name=this.value">${row.name||''}</textarea></td>
+        <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" oninput="ar(this);tdPrep[${i}].detail=this.value">${row.detail||''}</textarea></td>
+        <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" placeholder="مكونات إضافية..." oninput="ar(this);tdPrep[${i}].extra=this.value">${row.extra||''}</textarea></td>
         <td class="tda">
           <div class="act-wrap">
-            <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
-            <div class="act-menu">
-              <button class="danger" onclick="delTD('prep','${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
-            </div>
+            <button class="bsave" style="display:inline-block" onclick="saveTDRow('prep',${i})">💾 حفظ</button>
+            <button class="bdel2" onclick="delTD('prep','${row.id}',${i})">🗑️ حذف</button>
           </div>
         </td>`;
     } else if(type==='recv'){
@@ -1038,7 +1115,7 @@ function renderTD(type){
         <td class="tdc"><select class="csel c${catAbbr(row.cat||'components')}" onchange="onTDRecvCat(${i},this)">${catOpts}</select></td>
         <td>
           <select class="isel" onchange="onTDRecvItem(${i},this)">${itemOpts}</select>
-          <input type="text" class="cedit" style="display:${isC?'block':'none'};padding-top:0;min-height:28px" value="${isC?row.item:''}" onchange="updateTD('recv','${row.id}','item',this.value)">
+          <input type="text" class="cedit" style="display:${isC?'block':'none'};padding-top:0;min-height:28px" value="${isC?row.item:''}" oninput="tdRecv[${i}].item=this.value">
         </td>
         <td class="tdq">
           <div class="qctr">
@@ -1047,28 +1124,28 @@ function renderTD(type){
             <button onclick="changeQty('tdrecv',${i},1)">+</button>
           </div>
         </td>
-        <td><select class="isel" style="color:${row.status==='مكتمل'?'#16A34A':row.status==='تالف'?'#ef4444':'var(--g800)'}" onchange="updateTD('recv','${row.id}','status',this.value)">${statOpts}</select></td>
+        <td><select class="isel" style="color:${row.status==='مكتمل'?'#16A34A':row.status==='تالف'?'#ef4444':'var(--g800)'}" onchange="tdRecv[${i}].status=this.value">${statOpts}</select></td>
         <td class="tda">
           <div class="act-wrap">
-            <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
-            <div class="act-menu">
-              <button class="danger" onclick="delTD('recv','${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
-            </div>
+            <button class="bsave" style="display:inline-block" onclick="saveTDRow('recv',${i})">💾 حفظ</button>
+            <button class="bdel2" onclick="delTD('recv','${row.id}',${i})">🗑️ حذف</button>
           </div>
         </td>`;
     } else {
+      // Check List - new columns: Check List, الصنف, الاسم, العدد, ملاحظات
       tr.innerHTML=`
         <td style="text-align:center;vertical-align:middle;padding:9px 5px">
-          <input type="checkbox" ${row.done?'checked':''} style="width:16px;height:16px;accent-color:var(--or)" onchange="updateTD('check','${row.id}','done',this.checked)">
+          <input type="checkbox" ${row.done?'checked':''} style="width:16px;height:16px;accent-color:var(--or)" onchange="tdCheck[${i}].done=this.checked;saveTDRow('check',${i})">
         </td>
-        <td><textarea class="cedit" rows="1" oninput="ar(this)" style="${row.done?'text-decoration:line-through;color:var(--g400)':''}" onchange="updateTD('check','${row.id}','name',this.value)">${row.name||''}</textarea></td>
-        <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" oninput="ar(this)" onchange="updateTD('check','${row.id}','note',this.value)">${row.note||''}</textarea></td>
+        <td><textarea class="cedit" rows="1" oninput="ar(this);tdCheck[${i}].name=this.value" style="${row.done?'text-decoration:line-through;color:var(--g400)':''}">${row.name||''}</textarea></td>
+        <td><textarea class="cedit" rows="1" oninput="ar(this);tdCheck[${i}].cat=this.value" style="color:var(--g600)">${row.cat||''}</textarea></td>
+        <td><textarea class="cedit" rows="1" oninput="ar(this);tdCheck[${i}].item=this.value" style="color:var(--g600)">${row.item||''}</textarea></td>
+        <td class="tdq"><input type="number" class="qinput" value="${row.qty||0}" min="0" oninput="tdCheck[${i}].qty=+this.value"></td>
+        <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" oninput="ar(this);tdCheck[${i}].note=this.value">${row.note||''}</textarea></td>
         <td class="tda">
           <div class="act-wrap">
-            <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
-            <div class="act-menu">
-              <button class="danger" onclick="delTD('check','${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
-            </div>
+            <button class="bsave" style="display:inline-block" onclick="saveTDRow('check',${i})">💾 حفظ</button>
+            <button class="bdel2" onclick="delTD('check','${row.id}',${i})">🗑️ حذف</button>
           </div>
         </td>`;
     }
@@ -1076,23 +1153,51 @@ function renderTD(type){
   });
   tb.querySelectorAll('textarea').forEach(ar);
 }
-function onTDRecvCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;updateTD('recv',tdRecv[i].id,'cat',sel.value);setTimeout(()=>renderTD('recv'),50);}
+function onTDRecvCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;tdRecv[i].cat=sel.value;setTimeout(()=>renderTD('recv'),50);}
 function onTDRecvItem(i,sel){
   const inp=sel.nextElementSibling;
   if(sel.value==='__c__'){inp.style.display='block';inp.focus();}
-  else{inp.style.display='none';updateTD('recv',tdRecv[i].id,'item',sel.value);}
+  else{inp.style.display='none';tdRecv[i].item=sel.value;}
+}
+async function saveTDRow(type,i){
+  const rows=type==='prep'?tdPrep:type==='recv'?tdRecv:tdCheck;
+  const row=rows[i];if(!row)return;
+  // Validation
+  if(type==='prep'&&!row.name?.trim()){showToast('⚠️ يرجى كتابة الخطوة');return;}
+  if(type==='recv'&&!row.item){showToast('⚠️ يرجى اختيار المادة');return;}
+  if(type==='check'&&!row.name?.trim()){showToast('⚠️ يرجى كتابة البند');return;}
+  // Attach date from selectors
+  const y=document.getElementById('td-year-'+type)?.value||'';
+  const m=document.getElementById('td-month-'+type)?.value||'';
+  const d=document.getElementById('td-day-'+type)?.value||'';
+  row.td_year=y||null;row.td_month=m?+m:null;row.td_day=d?+d:null;
+  if(row._new){
+    delete row._new;
+    await db.from('techday_'+type).insert(row);
+  } else {
+    const update={...row};delete update._new;
+    await db.from('techday_'+type).update(update).eq('id',row.id);
+  }
+  showToast('✅ تم الحفظ');
+  await loadTD(type);
 }
 async function updateTD(type,id,field,val){
-  await db.from('techday_'+type).update({[field]:val}).eq('id',id);
+  const rows=type==='prep'?tdPrep:type==='recv'?tdRecv:tdCheck;
+  const row=rows.find(r=>r.id===id);if(row)row[field]=val;
 }
 async function addTDRow(type){
-  ld();
   const id='td'+Date.now();
-  const base={id,sort_order:(type==='prep'?tdPrep:type==='recv'?tdRecv:tdCheck).length};
-  if(type==='prep') await db.from('techday_prep').insert({...base,name:'خطوة جديدة',detail:'',extra:''});
-  else if(type==='recv') await db.from('techday_recv').insert({...base,cat:'components',item:'',qty:0,status:'لم يُستلم'});
-  else await db.from('techday_check').insert({...base,name:'بند جديد',note:'',done:false});
-  await loadTD(type);uh();
+  const y=document.getElementById('td-year-'+type)?.value||null;
+  const m=document.getElementById('td-month-'+type)?.value||null;
+  const d=document.getElementById('td-day-'+type)?.value||null;
+  const base={id,sort_order:(type==='prep'?tdPrep:type==='recv'?tdRecv:tdCheck).length,td_year:y,td_month:m?+m:null,td_day:d?+d:null,_new:true};
+  if(type==='prep'){tdPrep.push({...base,name:'',detail:'',extra:''});}
+  else if(type==='recv'){tdRecv.push({...base,cat:'components',item:'',qty:0,status:'لم يُستلم'});}
+  else{tdCheck.push({...base,name:'',cat:'',item:'',qty:0,note:'',done:false});}
+  renderTD(type);
+  const tb=document.getElementById(tdTables[type]);
+  const lastTr=tb.querySelector('tr:last-child');
+  if(lastTr){const first=lastTr.querySelector('textarea,input,select');if(first)first.focus();}
 }
 async function delTD(type,id,i){
   if(!confirm('تحذف؟'))return;ld();
@@ -1143,31 +1248,46 @@ function catBg(c){return {components:'#EFF6FF',machines:'#F0FDF4',kits:'#FFF7ED'
 function catClr(c){return {components:'#2563EB',machines:'#16A34A',kits:'#EA580C',materials:'#9333EA'}[c]||'#374151';}
 function ar(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 
-// 3-DOT MENU
-function toggleMenu(btn){
-  const menu=btn.nextElementSibling;
-  const isOpen=menu.classList.contains('open');
-  closeAllMenus();
-  if(!isOpen) menu.classList.add('open');
+// DIRECT ROW EDIT
+function startRowEdit(btn,type,i){
+  let tbody='theme-body';
+  if(type==='ret') tbody='returns-body';
+  else if(type==='inv') tbody='inv-body';
+  const tr=document.querySelectorAll('#'+tbody+' tr')[i];
+  if(!tr)return;
+  tr.dataset.mode='edit';
+  tr.querySelectorAll('.rv').forEach(el=>el.style.display='none');
+  tr.querySelectorAll('.re').forEach(el=>el.style.display='');
+  // Toggle buttons
+  btn.style.display='none';
+  const saveBtn=tr.querySelector('.bsave');
+  if(saveBtn)saveBtn.style.display='inline-block';
+  const first=tr.querySelector('.re select,.re textarea,.re input');
+  if(first)first.focus();
 }
-function closeAllMenus(){document.querySelectorAll('.act-menu.open').forEach(m=>m.classList.remove('open'));}
-document.addEventListener('click',e=>{if(!e.target.closest('.act-wrap'))closeAllMenus();});
+
+// TOAST NOTIFICATION
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
 
 // QTY COUNTER
 async function changeQty(type,i,delta){
   let row,field='qty',tbl;
   if(type==='theme'){row=themeRows[i];tbl='school_themes';}
   else if(type==='ret'){row=returnRows[i];tbl='school_returns';}
-  else if(type==='tdrecv'){row=tdRecv[i];tbl='techday_recv';}
+  else if(type==='tdrecv'){row=tdRecv[i];tbl=null;}
   if(!row)return;
   const newQty=Math.max(0,(parseInt(row.qty)||0)+delta);
   row.qty=newQty;
   const span=document.getElementById(`qty-${type}-${i}`);
   if(span)span.textContent=newQty;
-  await db.from(tbl).update({qty:newQty}).eq('id',row.id);
+  if(tbl&&!row._new) await db.from(tbl).update({qty:newQty}).eq('id',row.id);
 }
 
-// EDIT ROWS - now handled by toggleRowEdit
+// EDIT ROWS - handled by startRowEdit
 
 // ENTER KEY NAVIGATION between rows
 document.addEventListener('keydown',e=>{

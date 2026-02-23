@@ -195,6 +195,9 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   tbody tr:nth-child(even){-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   select.csel{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 }
+.icon-opt{font-size:22px;cursor:pointer;text-align:center;padding:6px;border-radius:8px;border:2px solid transparent;transition:all .15s;}
+.icon-opt:hover{background:var(--orb);border-color:var(--orbd);}
+.icon-opt.selected{background:var(--orb);border-color:var(--or);}
 </style>
 </head>
 <body>
@@ -219,8 +222,26 @@ select.isel:focus{background:rgba(249,115,22,.04);}
     <h3>➕ إضافة مدرسة جديدة</h3>
     <label>اسم المدرسة</label>
     <input type="text" id="ms-name" placeholder="مثال: مدرسة النماذج">
-    <label>الأيقونة</label>
-    <input type="text" id="ms-icon" placeholder="🏫" value="🏫">
+    <label>اختر أيقونة</label>
+    <div id="icon-picker" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:12px;">
+      <span class="icon-opt selected" onclick="selectIcon(this)">🏫</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🏛️</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🎓</span>
+      <span class="icon-opt" onclick="selectIcon(this)">📚</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🌟</span>
+      <span class="icon-opt" onclick="selectIcon(this)">⭐</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🏆</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🥇</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🎯</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🌍</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🌙</span>
+      <span class="icon-opt" onclick="selectIcon(this)">☀️</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🦅</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🦁</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🌺</span>
+      <span class="icon-opt" onclick="selectIcon(this)">🏠</span>
+    </div>
+    <input type="hidden" id="ms-icon" value="🏫">
     <div class="mbtns">
       <button class="mbtn mbtn-cancel" onclick="closeModal('modal-school')">إلغاء</button>
       <button class="mbtn mbtn-ok" onclick="confirmAddSchool()">إضافة</button>
@@ -473,7 +494,41 @@ select.isel:focus{background:rgba(249,115,22,.04);}
 </div>
 
 <script>
-// ===== SUPABASE =====
+// ===== ICON PICKER =====
+function selectIcon(el){
+  document.querySelectorAll('.icon-opt').forEach(x=>x.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('ms-icon').value=el.textContent;
+}
+
+// ===== ENTER KEY → NEXT ROW =====
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!e.shiftKey){
+    const el=e.target;
+    // Only handle textarea cells in tables
+    if(el.tagName==='TEXTAREA'&&el.closest('tbody')){
+      e.preventDefault();
+      const allTextareas=[...el.closest('tbody').querySelectorAll('textarea')];
+      const idx=allTextareas.indexOf(el);
+      // Find textareas in the same column (same td position) in next rows
+      const curTd=el.closest('td');
+      const curTr=el.closest('tr');
+      const tdIdx=[...curTr.children].indexOf(curTd);
+      const allRows=[...curTr.closest('tbody').querySelectorAll('tr')];
+      const curRowIdx=allRows.indexOf(curTr);
+      for(let r=curRowIdx+1;r<allRows.length;r++){
+        const tds=[...allRows[r].children];
+        const td=tds[tdIdx];
+        if(td){
+          const ta=td.querySelector('textarea');
+          if(ta){ta.focus();ta.select();return;}
+        }
+      }
+    }
+  }
+});
+
+
 const SURL='https://milqizzksncspauhxxhh.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pbHFpenprc25jc3BhdWh4eGhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NDA0MzgsImV4cCI6MjA4NzQxNjQzOH0.Bff2n6VC4qlMvBZS9Ys2vU7FmpLL3s7220Cdz9tu6aI';
 const {createClient}=supabase;
@@ -508,7 +563,15 @@ let tdPrep=[],tdRecv=[],tdCheck=[];
 let curPage='home',curSchoolId=null,curTheme=0,curYear=null,curAnnualSchoolId=null,curReturnSchoolId=null;
 
 // ===== MODAL =====
-function openModal(id){document.getElementById(id).classList.add('on');}
+function openModal(id){
+  document.getElementById(id).classList.add('on');
+  if(id==='modal-school'){
+    // Reset icon picker
+    document.querySelectorAll('.icon-opt').forEach(x=>x.classList.remove('selected'));
+    const first=document.querySelector('.icon-opt');
+    if(first){first.classList.add('selected');document.getElementById('ms-icon').value=first.textContent;}
+  }
+}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 
 // ===== NAV =====
@@ -691,7 +754,6 @@ function renderThemeTable(){
         <div class="act-wrap">
           <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
           <div class="act-menu">
-            <button onclick="editThemeRow(${i})">✏️ تعديل</button>
             <button class="danger" onclick="delThemeRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
           </div>
         </div>
@@ -863,7 +925,6 @@ function renderReturns(){
         <div class="act-wrap">
           <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
           <div class="act-menu">
-            <button onclick="editRetRow(${i})">✏️ تعديل</button>
             <button class="danger" onclick="delRetRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
           </div>
         </div>
@@ -924,7 +985,6 @@ async function renderInventory(){
         <div class="act-wrap">
           <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
           <div class="act-menu">
-            <button onclick="editInvRow('${r.id}')">✏️ تعديل</button>
             <button class="danger" onclick="delInvRow('${r.id}',${i});closeAllMenus()">🗑️ حذف</button>
           </div>
         </div>

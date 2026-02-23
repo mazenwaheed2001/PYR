@@ -202,6 +202,51 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   tbody tr:nth-child(even){-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   select.csel{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 }
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .topbar{padding:0 14px;height:52px;}
+  .tb-logo img{height:26px;}
+  .page{padding:14px;}
+  .hero{padding:22px 18px;border-radius:12px;}
+  .htitle{font-size:22px;}
+  .cgrid{grid-template-columns:1fr 1fr;gap:12px;}
+  .mcard{padding:18px 14px;}
+  .cname{font-size:14px;}
+  .cdesc{display:none;}
+  .sgrid{grid-template-columns:1fr 1fr;gap:10px;}
+  .scard{padding:14px 12px;}
+  .ph{flex-direction:column;align-items:flex-start;gap:8px;}
+  .ptitle{font-size:18px;}
+  /* Tables on mobile: horizontal scroll */
+  .tcard{border-radius:8px;overflow-x:auto;}
+  table{min-width:480px;}
+  thead th{font-size:10px;padding:9px 8px;}
+  .cedit{padding:7px 8px;font-size:12px;}
+  select.isel{padding:7px 8px;font-size:12px;}
+  .ttabs{gap:3px;}
+  .ttab{padding:7px 10px;font-size:11px;}
+  /* Actions column */
+  thead th.ta{width:80px;}
+  .bsave-row{padding:4px 9px;font-size:11px;}
+  .bedit-row{padding:3px 7px;font-size:11px;}
+  /* Stats grid */
+  .stat-grid{grid-template-columns:1fr 1fr!important;}
+  /* School detail tabs - make scrollable */
+  .ttabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;}
+  .ttab{white-space:nowrap;}
+  /* Modal */
+  .modal-box{width:90vw;padding:24px 18px;}
+  /* Hero on home */
+  .hero::before,.hero::after{display:none;}
+}
+@media (max-width: 480px) {
+  .cgrid{grid-template-columns:1fr;}
+  .sgrid{grid-template-columns:1fr;}
+  .topbar{padding:0 10px;}
+  .htitle{font-size:18px;}
+  .page{padding:10px;}
+}
 </style>
 </head>
 <body>
@@ -517,30 +562,48 @@ const pageParents={
   'techday-prep':'techday-home','techday-recv':'techday-home','techday-check':'techday-home',
   'audit':'home'
 };
-function goTo(page,extra){
+let _navPush=true; // flag to prevent double push on popstate
+function goTo(page,extra,skipPush){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+page);
   if(el) el.classList.add('active');
   curPage=page;
+  if(extra!==undefined){
+    if(page==='school-detail')curSchoolId=extra;
+    else if(page==='annual')curAnnualSchoolId=extra;
+    else if(page==='returns')curReturnSchoolId=extra;
+  }
   document.getElementById('back-btn').classList.toggle('show',page!=='home');
   document.getElementById('print-btn').style.display=(page!=='home')?'':'none';
   updateBC();
+  // Push to browser history
+  if(!skipPush){
+    const state={page,extra,curSchoolId,curAnnualSchoolId,curReturnSchoolId};
+    history.pushState(state,'',`#${page}`);
+  }
   if(page==='schools'){loadSchools();}
-  else if(page==='school-detail'){curSchoolId=extra;loadSchoolDetail();}
-  else if(page==='annual'){curAnnualSchoolId=extra;loadAnnual();}
-  else if(page==='returns'){curReturnSchoolId=extra;loadReturns();}
+  else if(page==='school-detail'){loadSchoolDetail();}
+  else if(page==='annual'){loadAnnual();}
+  else if(page==='returns'){loadReturns();}
   else if(page==='inventory'){loadInventory();}
   else if(page==='techday-prep'){loadTD('prep');}
   else if(page==='techday-recv'){loadTD('recv');}
   else if(page==='techday-check'){loadTD('check');}
   else if(page==='audit'){loadAudit();}
 }
+// Handle browser back/forward
+window.addEventListener('popstate',e=>{
+  if(!e.state){goTo('home',undefined,true);return;}
+  const {page,extra,curSchoolId:sid,curAnnualSchoolId:aid,curReturnSchoolId:rid}=e.state;
+  curSchoolId=sid;curAnnualSchoolId=aid;curReturnSchoolId=rid;
+  goTo(page,extra,true);
+});
 function goBack(){
-  const p=pageParents[curPage];
-  if(p){
-    if(p==='schools'&&(curPage==='school-detail'||curPage==='annual'||curPage==='returns')) goTo('schools');
-    else goTo(p);
-  } else goTo('home');
+  if(history.length>1){history.back();}
+  else{
+    const p=pageParents[curPage];
+    goTo(p||'home');
+  }
 }
 function updateBC(){
   const bc=document.getElementById('bc');
@@ -695,17 +758,17 @@ function renderThemeTable(){
     tr.dataset.idx=i;
     tr.innerHTML=`
       <td class="tdc">
-        <span class="rv"><span class="csel c${catAbbr(row.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(row.cat)}</span></span>
+        <span class="rv"${isNew?' style="display:none"':''}><span class="csel c${catAbbr(row.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(row.cat)}</span></span>
         <span class="re"${isNew?'':' style="display:none"'}><select class="csel c${catAbbr(row.cat)}" onchange="onThemeCatInline(${i},this)">${catOpts}</select></span>
       </td>
       <td>
-        <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${row.item||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="rv"${isNew?' style="display:none"':' style="padding:9px 13px;display:block;font-size:12.5px"'}>${row.item||'<span style="color:var(--g400)">—</span>'}</span>
         <span class="re" id="item-cell-${i}"${isNew?'':' style="display:none"'}>
           <select class="isel" onchange="onThemeItemInline(${i},this)">${itemOpts}</select>
         </span>
       </td>
       <td class="tdq">
-        <span class="rv" style="font-weight:700;color:var(--or);font-size:15px">${qty}</span>
+        <span class="rv"${isNew?' style="display:none"':' style="font-weight:700;color:var(--or);font-size:15px"'}>${qty}</span>
         <span class="re"${isNew?'':' style="display:none"'}>
           <div class="qctr">
             <button onclick="changeQty('theme',${i},-1)">−</button>
@@ -715,7 +778,7 @@ function renderThemeTable(){
         </span>
       </td>
       <td>
-        <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${row.note||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="rv"${isNew?' style="display:none"':' style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px"'}>${row.note||'<span style="color:var(--g400)">—</span>'}</span>
         <span class="re"${isNew?'':' style="display:none"'}><textarea class="cedit" rows="1" oninput="ar(this)" onchange="themeRows[${i}].note=this.value">${row.note||''}</textarea></span>
       </td>
       <td class="tda">
@@ -928,17 +991,17 @@ function renderReturns(){
     tr.dataset.table='ret';
     tr.innerHTML=`
       <td class="tdc">
-        <span class="rv"><span class="csel c${catAbbr(row.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(row.cat)}</span></span>
+        <span class="rv"${isNew?' style="display:none"':''}><span class="csel c${catAbbr(row.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(row.cat)}</span></span>
         <span class="re"${isNew?'':' style="display:none"'}><select class="csel c${catAbbr(row.cat)}" onchange="onRetCatInline(${i},this)">${catOpts}</select></span>
       </td>
       <td>
-        <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${row.item||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="rv"${isNew?' style="display:none"':' style="padding:9px 13px;display:block;font-size:12.5px"'}>${row.item||'<span style="color:var(--g400)">—</span>'}</span>
         <span class="re" id="ret-item-cell-${i}"${isNew?'':' style="display:none"'}>
           <select class="isel" onchange="returnRows[${i}].item=this.value">${itemOpts}</select>
         </span>
       </td>
       <td class="tdq">
-        <span class="rv" style="font-weight:700;color:var(--or);font-size:15px">${qty}</span>
+        <span class="rv"${isNew?' style="display:none"':' style="font-weight:700;color:var(--or);font-size:15px"'}>${qty}</span>
         <span class="re"${isNew?'':' style="display:none"'}>
           <div class="qctr">
             <button onclick="changeQty('ret',${i},-1)">−</button>
@@ -948,7 +1011,7 @@ function renderReturns(){
         </span>
       </td>
       <td>
-        <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${row.reason||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="rv"${isNew?' style="display:none"':' style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px"'}>${row.reason||'<span style="color:var(--g400)">—</span>'}</span>
         <span class="re"${isNew?'':' style="display:none"'}><textarea class="cedit" rows="1" oninput="ar(this)" onchange="returnRows[${i}].reason=this.value">${row.reason||''}</textarea></span>
       </td>
       <td class="tda">
@@ -1042,16 +1105,16 @@ async function renderInventory(){
     tr.dataset.idx=i;
     tr.innerHTML=`
       <td class="tdc">
-        <span class="rv"><span class="csel c${catAbbr(r.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(r.cat)}</span></span>
+        <span class="rv"${isNew?' style="display:none"':''}><span class="csel c${catAbbr(r.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(r.cat)}</span></span>
         <span class="re"${isNew?'':' style="display:none"'}><select class="csel c${catAbbr(r.cat)}" onchange="this.className='csel c'+catAbbr(this.value);inventory[${i}].cat=this.value;updateInvStats()">${catOpts}</select></span>
       </td>
       <td>
-        <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${r.name}</span>
+        <span class="rv"${isNew?' style="display:none"':' style="padding:9px 13px;display:block;font-size:12.5px"'}>${r.name}</span>
         <span class="re"${isNew?'':' style="display:none"'}><textarea class="cedit" rows="1" oninput="ar(this)" onchange="inventory[${i}].name=this.value">${r.name}</textarea></span>
       </td>
       <td class="tdq" style="color:var(--or);font-weight:700;font-size:16px">${p}</td>
       <td>
-        <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${r.note||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="rv"${isNew?' style="display:none"':' style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px"'}>${r.note||'<span style="color:var(--g400)">—</span>'}</span>
         <span class="re"${isNew?'':' style="display:none"'}><textarea class="cedit" rows="1" oninput="ar(this)" onchange="inventory[${i}].note=this.value">${r.note||''}</textarea></span>
       </td>
       <td class="tda">
@@ -1348,6 +1411,8 @@ async function init(){
   inventory=inv||[];
   const {data:sc}=await db.from('schools').select('*').order('created_at');
   schools=sc||[];
+  // Push initial state so back button works after login
+  history.replaceState({page:'home'},'','#home');
   uh();
 }
 </script>

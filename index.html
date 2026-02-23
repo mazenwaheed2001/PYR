@@ -195,9 +195,6 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   tbody tr:nth-child(even){-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   select.csel{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 }
-.icon-opt{font-size:22px;cursor:pointer;text-align:center;padding:6px;border-radius:8px;border:2px solid transparent;transition:all .15s;}
-.icon-opt:hover{background:var(--orb);border-color:var(--orbd);}
-.icon-opt.selected{background:var(--orb);border-color:var(--or);}
 </style>
 </head>
 <body>
@@ -222,26 +219,8 @@ select.isel:focus{background:rgba(249,115,22,.04);}
     <h3>➕ إضافة مدرسة جديدة</h3>
     <label>اسم المدرسة</label>
     <input type="text" id="ms-name" placeholder="مثال: مدرسة النماذج">
-    <label>اختر أيقونة</label>
-    <div id="icon-picker" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:12px;">
-      <span class="icon-opt selected" onclick="selectIcon(this)">🏫</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🏛️</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🎓</span>
-      <span class="icon-opt" onclick="selectIcon(this)">📚</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🌟</span>
-      <span class="icon-opt" onclick="selectIcon(this)">⭐</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🏆</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🥇</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🎯</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🌍</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🌙</span>
-      <span class="icon-opt" onclick="selectIcon(this)">☀️</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🦅</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🦁</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🌺</span>
-      <span class="icon-opt" onclick="selectIcon(this)">🏠</span>
-    </div>
-    <input type="hidden" id="ms-icon" value="🏫">
+    <label>الأيقونة</label>
+    <input type="text" id="ms-icon" placeholder="🏫" value="🏫">
     <div class="mbtns">
       <button class="mbtn mbtn-cancel" onclick="closeModal('modal-school')">إلغاء</button>
       <button class="mbtn mbtn-ok" onclick="confirmAddSchool()">إضافة</button>
@@ -273,7 +252,7 @@ select.isel:focus{background:rgba(249,115,22,.04);}
     <div class="tb-right">
       <span class="sdot"></span>
       <span class="slbl" id="slbl">متصل ✓</span>
-      <button class="btn bou" onclick="window.print()">🖨️ طباعة</button>
+      <button class="btn bou" id="print-btn" style="display:none" onclick="window.print()">🖨️ طباعة</button>
       <button class="tb-back btn bou" id="back-btn" onclick="goBack()">→ رجوع</button>
     </div>
   </div>
@@ -321,10 +300,7 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   <div class="page" id="page-school-detail">
     <div class="ph">
       <div class="ptitle" id="sd-title">المدرسة</div>
-      <div class="tbar">
-        <button class="badd" onclick="addThemeRow()">＋ إضافة صف</button>
-        <button class="btn bou" onclick="window.print()">🖨️ طباعة</button>
-      </div>
+      <button class="badd" onclick="addThemeRow()">＋ إضافة صف</button>
     </div>
     <div class="ttabs" id="sd-tabs"></div>
     <div class="tcard">
@@ -343,13 +319,8 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   <div class="page" id="page-annual">
     <div class="ph">
       <div class="ptitle" id="an-title">السنة الدراسية</div>
-      <div class="tbar">
-        <button class="badd" onclick="addAnnualRow()">＋ إضافة صف</button>
-        <button class="btn bou" onclick="window.print()">🖨️ طباعة PDF</button>
-      </div>
     </div>
     <div class="tbar" style="margin-bottom:18px">
-      <button class="btn bou" onclick="openModal('modal-year')">＋ سنة دراسية</button>
       <div class="yr-tabs" id="yr-tabs"></div>
     </div>
     <!-- Theme checkboxes for print -->
@@ -373,8 +344,8 @@ select.isel:focus{background:rgba(249,115,22,.04);}
     <div class="tcard">
       <table>
         <thead><tr>
-          <th class="tc">الصنف</th><th>المادة</th>
-          <th class="tq">العدد</th><th>ملاحظات</th><th class="ta"></th>
+          <th class="tc">الصنف</th><th>الاسم</th>
+          <th class="tq">العدد</th><th>السبب</th><th class="ta"></th>
         </tr></thead>
         <tbody id="returns-body"></tbody>
       </table>
@@ -494,41 +465,7 @@ select.isel:focus{background:rgba(249,115,22,.04);}
 </div>
 
 <script>
-// ===== ICON PICKER =====
-function selectIcon(el){
-  document.querySelectorAll('.icon-opt').forEach(x=>x.classList.remove('selected'));
-  el.classList.add('selected');
-  document.getElementById('ms-icon').value=el.textContent;
-}
-
-// ===== ENTER KEY → NEXT ROW =====
-document.addEventListener('keydown',function(e){
-  if(e.key==='Enter'&&!e.shiftKey){
-    const el=e.target;
-    // Only handle textarea cells in tables
-    if(el.tagName==='TEXTAREA'&&el.closest('tbody')){
-      e.preventDefault();
-      const allTextareas=[...el.closest('tbody').querySelectorAll('textarea')];
-      const idx=allTextareas.indexOf(el);
-      // Find textareas in the same column (same td position) in next rows
-      const curTd=el.closest('td');
-      const curTr=el.closest('tr');
-      const tdIdx=[...curTr.children].indexOf(curTd);
-      const allRows=[...curTr.closest('tbody').querySelectorAll('tr')];
-      const curRowIdx=allRows.indexOf(curTr);
-      for(let r=curRowIdx+1;r<allRows.length;r++){
-        const tds=[...allRows[r].children];
-        const td=tds[tdIdx];
-        if(td){
-          const ta=td.querySelector('textarea');
-          if(ta){ta.focus();ta.select();return;}
-        }
-      }
-    }
-  }
-});
-
-
+// ===== SUPABASE =====
 const SURL='https://milqizzksncspauhxxhh.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pbHFpenprc25jc3BhdWh4eGhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NDA0MzgsImV4cCI6MjA4NzQxNjQzOH0.Bff2n6VC4qlMvBZS9Ys2vU7FmpLL3s7220Cdz9tu6aI';
 const {createClient}=supabase;
@@ -563,15 +500,7 @@ let tdPrep=[],tdRecv=[],tdCheck=[];
 let curPage='home',curSchoolId=null,curTheme=0,curYear=null,curAnnualSchoolId=null,curReturnSchoolId=null;
 
 // ===== MODAL =====
-function openModal(id){
-  document.getElementById(id).classList.add('on');
-  if(id==='modal-school'){
-    // Reset icon picker
-    document.querySelectorAll('.icon-opt').forEach(x=>x.classList.remove('selected'));
-    const first=document.querySelector('.icon-opt');
-    if(first){first.classList.add('selected');document.getElementById('ms-icon').value=first.textContent;}
-  }
-}
+function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 
 // ===== NAV =====
@@ -587,6 +516,7 @@ function goTo(page,extra){
   if(el) el.classList.add('active');
   curPage=page;
   document.getElementById('back-btn').classList.toggle('show',page!=='home');
+  document.getElementById('print-btn').style.display=(page!=='home')?'':'none';
   updateBC();
   if(page==='schools'){loadSchools();}
   else if(page==='school-detail'){curSchoolId=extra;loadSchoolDetail();}
@@ -723,6 +653,23 @@ async function loadTheme(){
   themeRows=data||[];
   renderThemeTable();uh();
 }
+// ===== VIEW/EDIT TOGGLE =====
+function toggleRowEdit(btn,type,i){
+  let tbody,rows;
+  if(type==='theme'){tbody='theme-body';}
+  else if(type==='ret'){tbody='returns-body';}
+  else{tbody='inv-body';}
+  const tr=document.querySelectorAll('#'+tbody+' tr')[i];
+  if(!tr)return;
+  const isEdit=tr.dataset.mode==='edit';
+  tr.dataset.mode=isEdit?'view':'edit';
+  tr.querySelectorAll('.rv').forEach(el=>el.style.display=isEdit?'':'none');
+  tr.querySelectorAll('.re').forEach(el=>el.style.display=isEdit?'none':'');
+  if(!isEdit){
+    const first=tr.querySelector('.re select,.re textarea,.re input');
+    if(first){first.focus();}
+  }
+}
 function renderThemeTable(){
   const tb=document.getElementById('theme-body');
   tb.innerHTML='';
@@ -731,29 +678,41 @@ function renderThemeTable(){
     const isCustom=row.item&&!invItems.find(x=>x.name===row.item);
     const catOpts=['components','machines','kits','materials'].map(c=>`<option value="${c}" ${c===row.cat?'selected':''}>${catLabel(c)}</option>`).join('');
     let itemOpts=`<option value="">-- اختر --</option>`+
-      invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('')+
-      `<option value="__c__" ${isCustom?'selected':''}>✏️ كتابة يدوي</option>`;
+      invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('');
     const qty=parseInt(row.qty)||0;
     const tr=document.createElement('tr');
+    tr.dataset.mode='view';
     tr.innerHTML=`
-      <td class="tdc"><select class="csel c${catAbbr(row.cat)}" onchange="onThemeCat(${i},this)">${catOpts}</select></td>
+      <td class="tdc">
+        <span class="rv"><span class="csel c${catAbbr(row.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(row.cat)}</span></span>
+        <span class="re" style="display:none"><select class="csel c${catAbbr(row.cat)}" onchange="onThemeCat(${i},this)">${catOpts}</select></span>
+      </td>
       <td>
-        <select class="isel" onchange="onThemeItem(${i},this)">${itemOpts}</select>
-        <input type="text" class="cedit" style="display:${isCustom?'block':'none'};padding-top:0;min-height:28px"
-          value="${isCustom?row.item:''}" placeholder="اكتب الاسم..." onchange="updateTheme(${i},'item',this.value)">
+        <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${row.item||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="re" style="display:none">
+          <select class="isel" onchange="onThemeItem(${i},this)">${itemOpts}</select>
+          ${isCustom?`<input type="text" class="cedit" style="padding-top:0;min-height:28px" value="${row.item}" placeholder="اكتب الاسم..." onchange="updateTheme(${i},'item',this.value)">`:''}
+        </span>
       </td>
       <td class="tdq">
-        <div class="qctr">
-          <button onclick="changeQty('theme',${i},-1)">−</button>
-          <span id="qty-theme-${i}">${qty}</span>
-          <button onclick="changeQty('theme',${i},1)">+</button>
-        </div>
+        <span class="rv" style="font-weight:700;color:var(--or);font-size:15px">${qty}</span>
+        <span class="re" style="display:none">
+          <div class="qctr">
+            <button onclick="changeQty('theme',${i},-1)">−</button>
+            <span id="qty-theme-${i}">${qty}</span>
+            <button onclick="changeQty('theme',${i},1)">+</button>
+          </div>
+        </span>
       </td>
-      <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateTheme(${i},'note',this.value)">${row.note||''}</textarea></td>
+      <td>
+        <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${row.note||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateTheme(${i},'note',this.value)">${row.note||''}</textarea></span>
+      </td>
       <td class="tda">
         <div class="act-wrap">
           <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
           <div class="act-menu">
+            <button onclick="toggleRowEdit(this,'theme',${i});closeAllMenus()">✏️ تعديل</button>
             <button class="danger" onclick="delThemeRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
           </div>
         </div>
@@ -764,9 +723,7 @@ function renderThemeTable(){
 }
 function onThemeCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;updateTheme(i,'cat',sel.value);setTimeout(()=>renderThemeTable(),50);}
 function onThemeItem(i,sel){
-  const inp=sel.nextElementSibling;
-  if(sel.value==='__c__'){inp.style.display='block';inp.focus();}
-  else{inp.style.display='none';updateTheme(i,'item',sel.value);}
+  updateTheme(i,'item',sel.value);
 }
 async function updateTheme(i,field,val){
   const r=themeRows[i];if(!r)return;
@@ -899,32 +856,42 @@ function renderReturns(){
   tb.innerHTML='';
   returnRows.forEach((row,i)=>{
     const invItems=inventory.filter(x=>x.cat===row.cat);
-    const isCustom=row.item&&!invItems.find(x=>x.name===row.item);
     const catOpts=['components','machines','kits','materials'].map(c=>`<option value="${c}" ${c===row.cat?'selected':''}>${catLabel(c)}</option>`).join('');
     let itemOpts=`<option value="">-- اختر --</option>`+
-      invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('')+
-      `<option value="__c__" ${isCustom?'selected':''}>✏️ كتابة يدوي</option>`;
+      invItems.map(x=>`<option value="${x.name}" ${x.name===row.item?'selected':''}>${x.name}</option>`).join('');
     const qty=parseInt(row.qty)||0;
     const tr=document.createElement('tr');
+    tr.dataset.mode='view';
     tr.innerHTML=`
-      <td class="tdc"><select class="csel c${catAbbr(row.cat)}" onchange="onRetCat(${i},this)">${catOpts}</select></td>
+      <td class="tdc">
+        <span class="rv"><span class="csel c${catAbbr(row.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(row.cat)}</span></span>
+        <span class="re" style="display:none"><select class="csel c${catAbbr(row.cat)}" onchange="onRetCat(${i},this)">${catOpts}</select></span>
+      </td>
       <td>
-        <select class="isel" onchange="onRetItem(${i},this)">${itemOpts}</select>
-        <input type="text" class="cedit" style="display:${isCustom?'block':'none'};padding-top:0;min-height:28px"
-          value="${isCustom?row.item:''}" placeholder="اكتب الاسم..." onchange="updateRet(${i},'item',this.value)">
+        <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${row.item||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="re" style="display:none">
+          <select class="isel" onchange="onRetItem(${i},this)">${itemOpts}</select>
+        </span>
       </td>
       <td class="tdq">
-        <div class="qctr">
-          <button onclick="changeQty('ret',${i},-1)">−</button>
-          <span id="qty-ret-${i}">${qty}</span>
-          <button onclick="changeQty('ret',${i},1)">+</button>
-        </div>
+        <span class="rv" style="font-weight:700;color:var(--or);font-size:15px">${qty}</span>
+        <span class="re" style="display:none">
+          <div class="qctr">
+            <button onclick="changeQty('ret',${i},-1)">−</button>
+            <span id="qty-ret-${i}">${qty}</span>
+            <button onclick="changeQty('ret',${i},1)">+</button>
+          </div>
+        </span>
       </td>
-      <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateRet(${i},'note',this.value)">${row.note||''}</textarea></td>
+      <td>
+        <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${row.reason||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateRet(${i},'reason',this.value)">${row.reason||''}</textarea></span>
+      </td>
       <td class="tda">
         <div class="act-wrap">
           <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
           <div class="act-menu">
+            <button onclick="toggleRowEdit(this,'ret',${i});closeAllMenus()">✏️ تعديل</button>
             <button class="danger" onclick="delRetRow('${row.id}',${i});closeAllMenus()">🗑️ حذف</button>
           </div>
         </div>
@@ -935,9 +902,7 @@ function renderReturns(){
 }
 function onRetCat(i,sel){sel.className=`csel c${catAbbr(sel.value)}`;updateRet(i,'cat',sel.value);setTimeout(()=>renderReturns(),50);}
 function onRetItem(i,sel){
-  const inp=sel.nextElementSibling;
-  if(sel.value==='__c__'){inp.style.display='block';inp.focus();}
-  else{inp.style.display='none';updateRet(i,'item',sel.value);}
+  updateRet(i,'item',sel.value);
 }
 async function updateRet(i,field,val){
   const r=returnRows[i];if(!r)return;r[field]=val;
@@ -946,7 +911,7 @@ async function updateRet(i,field,val){
 async function addReturnRow(){
   ld();
   const id='sr'+Date.now();
-  await db.from('school_returns').insert({id,school_id:curReturnSchoolId,cat:'components',item:'',qty:0,note:''});
+  await db.from('school_returns').insert({id,school_id:curReturnSchoolId,cat:'components',item:'',qty:0,reason:''});
   await loadReturns();uh();
 }
 async function delRetRow(id,i){
@@ -976,15 +941,26 @@ async function renderInventory(){
   rows.forEach(({r,p},i)=>{
     const catOpts=['components','machines','kits','materials'].map(c=>`<option value="${c}" ${c===r.cat?'selected':''}>${catLabel(c)}</option>`).join('');
     const tr=document.createElement('tr');
+    tr.dataset.mode='view';
     tr.innerHTML=`
-      <td class="tdc"><select class="csel c${catAbbr(r.cat)}" onchange="updateInv('${r.id}','cat',this.value);this.className='csel c'+catAbbr(this.value);updateInvStats()">${catOpts}</select></td>
-      <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','name',this.value)">${r.name}</textarea></td>
+      <td class="tdc">
+        <span class="rv"><span class="csel c${catAbbr(r.cat)}" style="padding:3px 9px;border-radius:18px;display:inline-block;font-weight:700;font-size:11px">${catLabel(r.cat)}</span></span>
+        <span class="re" style="display:none"><select class="csel c${catAbbr(r.cat)}" onchange="updateInv('${r.id}','cat',this.value);this.className='csel c'+catAbbr(this.value);updateInvStats()">${catOpts}</select></span>
+      </td>
+      <td>
+        <span class="rv" style="padding:9px 13px;display:block;font-size:12.5px">${r.name}</span>
+        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','name',this.value)">${r.name}</textarea></span>
+      </td>
       <td class="tdq" style="color:var(--or);font-weight:700;font-size:16px">${p}</td>
-      <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','note',this.value)">${r.note||''}</textarea></td>
+      <td>
+        <span class="rv" style="padding:9px 13px;display:block;color:var(--g600);font-size:12.5px">${r.note||'<span style="color:var(--g400)">—</span>'}</span>
+        <span class="re" style="display:none"><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','note',this.value)">${r.note||''}</textarea></span>
+      </td>
       <td class="tda">
         <div class="act-wrap">
           <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
           <div class="act-menu">
+            <button onclick="toggleRowEdit(this,'inv',${i});closeAllMenus()">✏️ تعديل</button>
             <button class="danger" onclick="delInvRow('${r.id}',${i});closeAllMenus()">🗑️ حذف</button>
           </div>
         </div>
@@ -1191,24 +1167,31 @@ async function changeQty(type,i,delta){
   await db.from(tbl).update({qty:newQty}).eq('id',row.id);
 }
 
-// EDIT ROWS (focus textarea / open select)
-function editThemeRow(i){
-  const rows=document.getElementById('theme-body').querySelectorAll('tr');
-  if(rows[i]){const ta=rows[i].querySelector('select.isel');if(ta)ta.focus();}
-}
-function editRetRow(i){
-  const rows=document.getElementById('returns-body').querySelectorAll('tr');
-  if(rows[i]){const ta=rows[i].querySelector('select.isel');if(ta)ta.focus();}
-}
-function editInvRow(id){
-  const r=inventory.find(x=>x.id===id);
-  if(!r)return;
-  const allRows=document.getElementById('inv-body').querySelectorAll('tr');
-  allRows.forEach(tr=>{
-    const ta=tr.querySelector('textarea');
-    if(ta&&ta.textContent.trim()===r.name){ta.focus();ta.select();}
-  });
-}
+// EDIT ROWS - now handled by toggleRowEdit
+
+// ENTER KEY NAVIGATION between rows
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  const el=e.target;
+  if(!el.matches('textarea,select,input'))return;
+  const tbody=el.closest('tbody');
+  if(!tbody)return;
+  e.preventDefault();
+  const rows=[...tbody.querySelectorAll('tr')];
+  const curRow=el.closest('tr');
+  const curIdx=rows.indexOf(curRow);
+  const nextRow=rows[curIdx+1];
+  if(nextRow){
+    // if next row is in view mode, switch it to edit first
+    if(nextRow.dataset.mode==='view'){
+      nextRow.dataset.mode='edit';
+      nextRow.querySelectorAll('.rv').forEach(x=>x.style.display='none');
+      nextRow.querySelectorAll('.re').forEach(x=>x.style.display='');
+    }
+    const focusable=nextRow.querySelector('.re select,.re textarea,.re input');
+    if(focusable)focusable.focus();
+  }
+});
 
 // ===== INIT =====
 async function init(){

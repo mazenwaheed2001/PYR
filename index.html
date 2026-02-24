@@ -186,6 +186,14 @@ select.isel:focus{background:rgba(249,115,22,.04);}
 .td-card{background:#fff;border-radius:16px;padding:28px 24px;cursor:pointer;border:2px solid var(--g200);transition:all .2s;}
 .td-card:hover{border-color:var(--or);transform:translateY(-4px);box-shadow:0 14px 30px rgba(249,115,22,.13);}
 
+/* PREP HINT */
+.prep-hint{font-size:12px;color:var(--g400);margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+
+/* SCHOOL CHIPS */
+.inv-chip{padding:7px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid var(--g200);background:#fff;color:var(--g600);transition:all .15s;white-space:nowrap;}
+.inv-chip.active{background:var(--or);border-color:var(--or);color:#fff;}
+.inv-chip:hover:not(.active){border-color:var(--or);color:var(--or);background:var(--orb);}
+
 @media print{
   #login-screen,.topbar,.bc,.tbar,.bdel,.addrow,.badd,.bon,.bou,.sdel,.loader,.modal-bg,
   .tb-back,.ttabs,.yr-tabs,button{display:none!important;}
@@ -373,11 +381,18 @@ select.isel:focus{background:rgba(249,115,22,.04);}
       <div class="istat"><div class="istat-i">🖨️</div><div class="istat-n" id="st-machines">0</div><div class="istat-l">Machines</div></div>
       <div class="istat"><div class="istat-i">🔧</div><div class="istat-n" id="st-components">0</div><div class="istat-l">Components</div></div>
     </div>
+    <div id="inv-school-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;"></div>
     <div class="tcard">
       <table>
         <thead><tr>
-          <th class="tc">الصنف</th><th>المسمى</th>
-          <th class="tq">إجمالي المسحوب</th><th>ملاحظات</th><th class="ta"></th>
+          <th class="tc">الصنف</th>
+          <th>المسمى</th>
+          <th class="tq">الكمية المرسلة</th>
+          <th class="tq">الكمية الفعلية</th>
+          <th class="tq">التوالف</th>
+          <th>ملاحظات</th>
+          <th style="width:120px">التاريخ</th>
+          <th class="ta"></th>
         </tr></thead>
         <tbody id="inv-body"></tbody>
       </table>
@@ -410,18 +425,20 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   <!-- TECH DAY PREP -->
   <div class="page" id="page-techday-prep">
     <div class="ph">
-      <div class="ptitle">📋 خطة التحضير</div>
+      <div class="ptitle">📋 خطة التحضير والتنفيذ</div>
       <div class="tbar">
         <button class="badd" onclick="addTDRow('prep')">＋ إضافة خطوة</button>
         <button class="btn bou" onclick="window.print()">🖨️ PDF</button>
       </div>
     </div>
+    <div class="prep-hint">اضغط على أي خلية عشان تعدل فيها مباشرة ✏️</div>
     <div class="tcard">
       <table>
         <thead><tr>
           <th style="width:40px;text-align:center">#</th>
-          <th style="width:160px">الخطوة</th><th>التفاصيل</th>
-          <th style="width:150px">مكونات إضافية</th><th class="ta"></th>
+          <th style="width:200px">الخطوة</th>
+          <th>التفاصيل</th>
+          <th class="ta"></th>
         </tr></thead>
         <tbody id="tdprep-body"></tbody>
       </table>
@@ -451,17 +468,22 @@ select.isel:focus{background:rgba(249,115,22,.04);}
   <div class="page" id="page-techday-check">
     <div class="ph">
       <div class="ptitle">✅ Check List</div>
-      <button class="badd" onclick="addTDRow('check')">＋ إضافة بند</button>
+      <button class="badd" onclick="addTDRow('check')">＋ إضافة صنف</button>
     </div>
     <div class="tcard">
       <table>
         <thead><tr>
           <th style="width:40px;text-align:center">✓</th>
-          <th>البند</th><th>الملاحظات</th><th class="ta"></th>
+          <th class="tc">الصنف</th>
+          <th>الاسم</th>
+          <th class="tq">العدد</th>
+          <th>ملاحظات</th>
+          <th style="width:120px">تاريخ التسليم</th>
+          <th class="ta"></th>
         </tr></thead>
         <tbody id="tdcheck-body"></tbody>
       </table>
-      <button class="addrow" onclick="addTDRow('check')">＋ إضافة بند</button>
+      <button class="addrow" onclick="addTDRow('check')">＋ إضافة صنف</button>
     </div>
   </div>
 
@@ -896,42 +918,81 @@ async function delRetRow(id,i){
 }
 
 // ===== INVENTORY =====
+let invSelectedSchool=null;
 async function loadInventory(){
   ld();
   const {data}=await db.from('inventory').select('*').order('cat').order('name');
   inventory=data||[];
-  await renderInventory();uh();
+  renderInvSchoolChips();
+  renderInventory();uh();
 }
-async function calcPulled(name){
-  const {data}=await db.from('school_themes').select('qty').eq('item',name);
-  return (data||[]).reduce((s,r)=>s+(+r.qty||0),0);
+function renderInvSchoolChips(){
+  const cont=document.getElementById('inv-school-chips');
+  if(!cont)return;
+  cont.innerHTML='';
+  // "الكل" chip
+  const allChip=document.createElement('button');
+  allChip.className='inv-chip'+(invSelectedSchool===null?' active':'');
+  allChip.textContent='🏫 الكل';
+  allChip.onclick=()=>{invSelectedSchool=null;renderInvSchoolChips();renderInventory();};
+  cont.appendChild(allChip);
+  // school chips
+  schools.forEach(s=>{
+    const chip=document.createElement('button');
+    chip.className='inv-chip'+(invSelectedSchool===s.id?' active':'');
+    chip.textContent=(s.icon||'🏫')+' '+s.name;
+    chip.onclick=()=>{invSelectedSchool=s.id;renderInvSchoolChips();renderInventory();};
+    cont.appendChild(chip);
+  });
 }
-async function renderInventory(){
+function renderInventory(){
   updateInvStats();
   const tb=document.getElementById('inv-body');
-  tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--g400)">جاري الحساب...</td></tr>';
-  const rows=await Promise.all(inventory.map(async r=>({r,p:await calcPulled(r.name)})));
   tb.innerHTML='';
-  rows.forEach(({r,p},i)=>{
+  // Filter by selected school (null = show all)
+  const rows=invSelectedSchool
+    ? inventory.filter(r=>r.school_id===invSelectedSchool)
+    : inventory;
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--g400)">لا يوجد بيانات — اضغط إضافة صنف</td></tr>';
+    return;
+  }
+  rows.forEach((r,i)=>{
     const catOpts=['components','machines','kits','materials'].map(c=>`<option value="${c}" ${c===r.cat?'selected':''}>${catLabel(c)}</option>`).join('');
+    const dmg=Math.max(0,(parseInt(r.qty_sent)||0)-(parseInt(r.qty_actual)||0));
     const tr=document.createElement('tr');
+    tr.id='inv-row-'+r.id;
     tr.innerHTML=`
       <td class="tdc"><select class="csel c${catAbbr(r.cat)}" onchange="updateInv('${r.id}','cat',this.value);this.className='csel c'+catAbbr(this.value);updateInvStats()">${catOpts}</select></td>
-      <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','name',this.value)">${r.name}</textarea></td>
-      <td class="tdq" style="color:var(--or);font-weight:700;font-size:16px">${p}</td>
-      <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','note',this.value)">${r.note||''}</textarea></td>
+      <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','name',this.value)">${r.name||''}</textarea></td>
+      <td class="tdq"><input type="number" class="qinput" min="0" value="${r.qty_sent||0}" oninput="updateInvDmg('${r.id}','qty_sent',this.value)" onchange="updateInv('${r.id}','qty_sent',this.value)"></td>
+      <td class="tdq"><input type="number" class="qinput" min="0" value="${r.qty_actual||0}" oninput="updateInvDmg('${r.id}','qty_actual',this.value)" onchange="updateInv('${r.id}','qty_actual',this.value)"></td>
+      <td class="tdq" id="dmg-${r.id}" style="color:${dmg>0?'#ef4444':'#10b981'};font-weight:700">${dmg}</td>
+      <td><textarea class="cedit" rows="1" oninput="ar(this)" onchange="updateInv('${r.id}','notes',this.value)">${r.notes||''}</textarea></td>
+      <td><input type="date" class="cedit" style="min-height:36px;padding:6px 10px" value="${r.inv_date||''}" onchange="updateInv('${r.id}','inv_date',this.value)"></td>
       <td class="tda">
         <div class="act-wrap">
           <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
           <div class="act-menu">
             <button onclick="editInvRow('${r.id}')">✏️ تعديل</button>
-            <button class="danger" onclick="delInvRow('${r.id}',${i});closeAllMenus()">🗑️ حذف</button>
+            <button class="danger" onclick="delInvRow('${r.id}');closeAllMenus()">🗑️ حذف</button>
           </div>
         </div>
       </td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll('textarea').forEach(ar);
+}
+// Live update التوالف without DB call
+function updateInvDmg(id,field,val){
+  const r=inventory.find(x=>x.id===id);if(!r)return;
+  r[field]=parseInt(val)||0;
+  const el=document.getElementById('dmg-'+id);
+  if(el){
+    const dmg=Math.max(0,(r.qty_sent||0)-(r.qty_actual||0));
+    el.textContent=dmg;
+    el.style.color=dmg>0?'#ef4444':'#10b981';
+  }
 }
 function updateInvStats(){
   ['components','machines','kits','materials'].forEach(c=>{
@@ -945,13 +1006,14 @@ async function updateInv(id,field,val){
 async function addInvRow(){
   ld();
   const id='i'+Date.now();
-  await db.from('inventory').insert({id,cat:'components',name:'صنف جديد',note:''});
+  await db.from('inventory').insert({id,cat:'components',name:'صنف جديد',notes:'',qty_sent:0,qty_actual:0,inv_date:null,school_id:invSelectedSchool||null});
   await loadInventory();uh();
 }
-async function delInvRow(id,i){
+async function delInvRow(id){
   if(!confirm('تحذف الصنف؟'))return;ld();
   await db.from('inventory').delete().eq('id',id);
-  inventory.splice(i,1);await renderInventory();uh();
+  inventory=inventory.filter(x=>x.id!==id);
+  renderInventory();uh();
 }
 
 // ===== TECH DAY =====
@@ -976,11 +1038,10 @@ function renderTD(type){
     if(type==='prep'){
       tr.innerHTML=`
         <td style="text-align:center;vertical-align:middle;padding:9px 5px">
-          <span style="display:inline-flex;width:26px;height:26px;border-radius:7px;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:${bg};color:${clr}">${i+1}</span>
+          <span style="display:inline-flex;width:26px;height:26px;border-radius:7px;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:#f3f4f6;color:var(--g600)">${i+1}</span>
         </td>
-        <td><textarea class="cedit" style="font-weight:700" rows="1" oninput="ar(this)" onchange="updateTD(type,'${row.id}','name',this.value)">${row.name||''}</textarea></td>
+        <td><textarea class="cedit" style="font-weight:700" rows="1" oninput="ar(this)" onchange="updateTD('prep','${row.id}','name',this.value)">${row.name||''}</textarea></td>
         <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" oninput="ar(this)" onchange="updateTD('prep','${row.id}','detail',this.value)">${row.detail||''}</textarea></td>
-        <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" placeholder="مكونات إضافية..." oninput="ar(this)" onchange="updateTD('prep','${row.id}','extra',this.value)">${row.extra||''}</textarea></td>
         <td class="tda">
           <div class="act-wrap">
             <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
@@ -1021,12 +1082,23 @@ function renderTD(type){
           </div>
         </td>`;
     } else {
+      const catOpts=['components','machines','kits','materials'].map(c=>`<option value="${c}" ${c===row.cat?'selected':''}>${catLabel(c)}</option>`).join('');
+      const qty=parseInt(row.qty)||0;
       tr.innerHTML=`
         <td style="text-align:center;vertical-align:middle;padding:9px 5px">
-          <input type="checkbox" ${row.done?'checked':''} style="width:16px;height:16px;accent-color:var(--or)" onchange="updateTD('check','${row.id}','done',this.checked)">
+          <input type="checkbox" ${row.done?'checked':''} style="width:16px;height:16px;accent-color:var(--or)" onchange="updateTD('check','${row.id}','done',this.checked);this.closest('tr').querySelectorAll('textarea').forEach(t=>{t.style.textDecoration=this.checked?'line-through':'none';t.style.color=this.checked?'var(--g400)':'';})">
         </td>
+        <td class="tdc"><select class="csel c${catAbbr(row.cat||'components')}" onchange="updateTD('check','${row.id}','cat',this.value);this.className='csel c'+catAbbr(this.value)">${catOpts}</select></td>
         <td><textarea class="cedit" rows="1" oninput="ar(this)" style="${row.done?'text-decoration:line-through;color:var(--g400)':''}" onchange="updateTD('check','${row.id}','name',this.value)">${row.name||''}</textarea></td>
+        <td class="tdq">
+          <div class="qctr">
+            <button onclick="changeQtyCheck(${i},-1)">−</button>
+            <span id="qty-chk-${i}">${qty}</span>
+            <button onclick="changeQtyCheck(${i},1)">+</button>
+          </div>
+        </td>
         <td><textarea class="cedit" style="color:var(--g600);font-size:12px" rows="1" oninput="ar(this)" onchange="updateTD('check','${row.id}','note',this.value)">${row.note||''}</textarea></td>
+        <td><input type="date" class="cedit" style="min-height:36px;padding:6px 10px" value="${row.delivery_date||''}" onchange="updateTD('check','${row.id}','delivery_date',this.value)"></td>
         <td class="tda">
           <div class="act-wrap">
             <button class="act-btn" onclick="toggleMenu(this)">⋮</button>
@@ -1055,7 +1127,7 @@ async function addTDRow(type){
   const base={id,sort_order:(type==='prep'?tdPrep:type==='recv'?tdRecv:tdCheck).length};
   if(type==='prep') await db.from('techday_prep').insert({...base,name:'خطوة جديدة',detail:'',extra:''});
   else if(type==='recv') await db.from('techday_recv').insert({...base,cat:'components',item:'',qty:0,status:'لم يُستلم'});
-  else await db.from('techday_check').insert({...base,name:'بند جديد',note:'',done:false});
+  else await db.from('techday_check').insert({...base,cat:'components',name:'',note:'',done:false,qty:0,delivery_date:null});
   await loadTD(type);uh();
 }
 async function delTD(type,id,i){
@@ -1130,6 +1202,14 @@ async function changeQty(type,i,delta){
   if(span)span.textContent=newQty;
   await db.from(tbl).update({qty:newQty}).eq('id',row.id);
 }
+async function changeQtyCheck(i,delta){
+  const row=tdCheck[i];if(!row)return;
+  const newQty=Math.max(0,(parseInt(row.qty)||0)+delta);
+  row.qty=newQty;
+  const span=document.getElementById(`qty-chk-${i}`);
+  if(span)span.textContent=newQty;
+  await db.from('techday_check').update({qty:newQty}).eq('id',row.id);
+}
 
 // EDIT ROWS (focus textarea / open select)
 function editThemeRow(i){
@@ -1141,13 +1221,8 @@ function editRetRow(i){
   if(rows[i]){const ta=rows[i].querySelector('select.isel');if(ta)ta.focus();}
 }
 function editInvRow(id){
-  const r=inventory.find(x=>x.id===id);
-  if(!r)return;
-  const allRows=document.getElementById('inv-body').querySelectorAll('tr');
-  allRows.forEach(tr=>{
-    const ta=tr.querySelector('textarea');
-    if(ta&&ta.textContent.trim()===r.name){ta.focus();ta.select();}
-  });
+  const row=document.getElementById('inv-row-'+id);
+  if(row){const ta=row.querySelector('textarea');if(ta){ta.focus();ta.select();}}
 }
 
 // ===== INIT =====

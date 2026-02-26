@@ -144,6 +144,9 @@
 <!-- Login -->
 <div id="login">
   <div class="lcard">
+    <div style="display:flex;justify-content:center;margin-bottom:12px">
+      <img alt="logo" style="height:52px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='70'%3E%3Ctext x='0' y='50' font-size='44' font-family='Segoe UI' font-weight='700' fill='%23EA580C'%3EPyramakerz%3C/text%3E%3C/svg%3E" />
+    </div>
     <div class="ltitle">Pyramakerz — Login</div>
     <div class="lrow">
       <input id="email" class="linput" type="email" placeholder="Email" autocomplete="username" />
@@ -164,7 +167,7 @@
     <div class="tb-right">
       <button id="backBtn" class="tb-back">رجوع</button>
       <span class="sdot"></span><span class="slbl">متصل</span>
-      <button id="logoutBtn" class="tb-logout">Logout</button>
+      <button id="logoutBtn" class="tb-logout">خروج</button>
     </div>
   </div>
 
@@ -227,7 +230,7 @@
   <div id="p-inventory" class="page">
     <div class="ph">
       <div class="ptitle">Inventory</div>
-      <button class="btn" id="addInvBtn">+ إضافة صنف</button>
+      <button class="btn" id="addInvBtn" class="btn admin-only">+ إضافة صنف</button>
     </div>
 
     <div class="tcard">
@@ -253,7 +256,7 @@
   <div id="p-schools" class="page">
     <div class="ph">
       <div class="ptitle">Schools</div>
-      <button class="btn" id="addSchoolBtn">+ إضافة مدرسة</button>
+      <button class="btn" id="addSchoolBtn" class="btn admin-only">+ إضافة مدرسة</button>
     </div>
 
     <div class="filters">
@@ -288,7 +291,7 @@
     <div id="schoolDetails" style="margin-top:16px;display:none">
       <div class="ph">
         <div class="ptitle" id="schoolDetailsTitle">توزيعات المدرسة</div>
-        <button class="btn" id="addDistBtn">+ إضافة توزيع</button>
+        <button class="btn" id="addDistBtn" class="btn admin-only">+ إضافة توزيع</button>
       </div>
 
       <div class="tcard">
@@ -315,7 +318,7 @@
   <div id="p-extra" class="page">
     <div class="ph">
       <div class="ptitle">Extra Requests</div>
-      <button class="btn" id="addExtraBtn">+ إضافة طلب</button>
+      <button class="btn" id="addExtraBtn" class="btn admin-only">+ إضافة طلب</button>
     </div>
 
     <div class="filters">
@@ -381,7 +384,7 @@
   <div id="p-daily" class="page">
     <div class="ph">
       <div class="ptitle">Daily Tasks</div>
-      <button class="btn" id="addTaskBtn">+ إضافة مهمة</button>
+      <button class="btn" id="addTaskBtn" class="btn admin-only">+ إضافة مهمة</button>
     </div>
 
     <div class="filters">
@@ -457,9 +460,38 @@
   /**********************
    * Supabase config
    **********************/
-  const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL";
-  const SUPABASE_ANON = "PASTE_YOUR_SUPABASE_ANON_KEY";
+  const SUPABASE_URL = "https://milqizzksncspauhxxhh.supabase.co";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pbHFpenprc25jc3BhdWh4eGhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NDA0MzgsImV4cCI6MjA4NzQxNjQzOH0.Bff2n6VC4qlMvBZS9Ys2vU7FmpLL3s7220Cdz9tu6aI";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  // Role-based access control (admin/viewer)
+  let IS_ADMIN = false;
+
+  async function fetchMyRole(){
+    const { data: { user } } = await sb.auth.getUser();
+    if(!user){ IS_ADMIN = false; applyRoleUI(); return; }
+    const { data, error } = await sb
+      .from('user_profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    IS_ADMIN = !!(data && data.role === 'admin');
+    applyRoleUI();
+  }
+
+  function applyRoleUI(){
+    document.querySelectorAll('.admin-only').forEach(el=>{
+      el.style.display = IS_ADMIN ? '' : 'none';
+    });
+    // Disable inline edits for non-admin (best-effort)
+    document.documentElement.classList.toggle('is-admin', IS_ADMIN);
+  }
+
+  function requireAdmin(){
+    if(IS_ADMIN) return true;
+    toast('هذه العملية للمشرف فقط.');
+    return false;
+  }
 
   /**********************
    * App state (NOT persisted)

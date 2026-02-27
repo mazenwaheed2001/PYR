@@ -2570,7 +2570,7 @@ async function updateRet(i, field, val) {
      ==============================================================*/
 
   /* تغيير كمية في theme / ret / tdrecv */
-  async async function changeQty(type, i, delta) {
+  async function changeQty(type, i, delta) {
     let row, tbl;
     if      (type === 'theme')  { row = themeRows[i];  tbl = 'school_themes'; }
     else if (type === 'ret')    { row = returnRows[i];  tbl = 'school_returns'; }

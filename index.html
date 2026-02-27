@@ -76,7 +76,7 @@
 
     .llogo  { width: 130px; height: 130px; object-fit: contain; margin: 0 auto 16px; display: block; }
     .ldiv   { width: 36px; height: 3px; background: var(--or); border-radius: 2px; margin: 0 auto 18px; }
-    .ltitle { font-size: 12px; font-weight: 700; color: var(--g600); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; }
+    .ltitle { font-size: 12px; font-weight: 700; color: var(--g600);  text-transform: uppercase; margin-bottom: 24px; }
 
     /* حقل كلمة المرور */
     .linput {
@@ -87,7 +87,7 @@
       font-family: inherit;
       font-size: 15px;
       text-align: center;
-      letter-spacing: 4px;
+      
       outline: none;
       transition: border .2s;
       margin-bottom: 12px;
@@ -126,7 +126,7 @@
     .tb-logo  { display: flex; align-items: center; gap: 12px; cursor: pointer; }
     .tb-logo img { height: 34px; }
     .tb-sep   { width: 1px; height: 26px; background: var(--orbd); }
-    .tb-title { font-size: 13px; font-weight: 700; color: var(--g800); letter-spacing: 1px; }
+    .tb-title { font-size: 13px; font-weight: 700; color: var(--g800);  }
     .tb-right { display: flex; align-items: center; gap: 8px; }
 
     /* زرار الرجوع — مخفي في الصفحة الرئيسية */
@@ -191,7 +191,7 @@
     .hero::before { content: ''; position: absolute; top: -50px; right: -30px; width: 220px; height: 220px; background: rgba(255,255,255,.08); border-radius: 50%; }
     .hero::after  { content: ''; position: absolute; bottom: -70px; left: 70px; width: 270px; height: 270px; background: rgba(0,0,0,.06); border-radius: 50%; }
     .hero-in { position: relative; z-index: 2; }
-    .htag    { font-size: 10px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; opacity: .7; margin-bottom: 8px; }
+    .htag    { font-size: 10px; font-weight: 700;  text-transform: uppercase; opacity: .7; margin-bottom: 8px; }
     .htitle  { font-size: 36px; font-weight: 800; line-height: 1.1; }
     .hsub    { font-size: 13px; opacity: .75; margin-top: 8px; }
 
@@ -222,7 +222,7 @@
     .ptitle { font-size: 24px; font-weight: 800; color: var(--g900); }
 
     /* تسمية القسم الصغيرة */
-    .slabel          { font-size: 11px; font-weight: 700; color: var(--g400); letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 7px; margin-bottom: 14px; }
+    .slabel          { font-size: 11px; font-weight: 700; color: var(--g400);  text-transform: uppercase; display: flex; align-items: center; gap: 7px; margin-bottom: 14px; }
     .slabel::before  { content: ''; width: 4px; height: 16px; background: var(--or); border-radius: 2px; }
 
     /* ======================================================
@@ -427,7 +427,7 @@
     .linput.email {
       direction: ltr;
       text-align: left;
-      letter-spacing: 0;
+      
       font-weight: 600;
     }
     .lhelp {
@@ -529,7 +529,12 @@
     .qctr button:disabled{ opacity:.55; cursor:not-allowed;}
     .qctr span{ min-width:32px; text-align:center; font-weight:900; }
     /* ===== Login inputs unify ===== */
-    .login-card input{ font-family:inherit; font-weight:600; text-align:center; letter-spacing:normal !important;}
+    .login-card input {
+    text-align: center !important;
+    font-weight: 500 !important;
+    letter-spacing: normal !important;
+    font-family: inherit !important;
+}
 </style>
 </head>
 <body>
@@ -1607,8 +1612,8 @@
   }
 
   async function delThemeRow(id, i) {
-    i    if (isArchiveYearSelected()) { alert('هذه السنة أرشيف (قراءة فقط)'); return; }
-f (!confirm('تحذف الصف؟')) return;
+    if (isArchiveYearSelected()) { alert('هذه السنة أرشيف (قراءة فقط)'); return; }
+    if (!confirm('تحذف الصف؟')) return;
     ld();
     await db.from('school_themes').delete().eq('id', id);
     themeRows.splice(i, 1);
